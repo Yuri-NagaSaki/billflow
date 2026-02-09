@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="A personal subscription management tool to track and manage all your recurring payments in one place" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' http://localhost:3001 https://localhost:3001; font-src 'self';">
+    <title>Subscription Manager</title>
+    <!-- Add inline styles for the preloader -->
+    <style>
+      .app-preloader {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: hsl(0 0% 98%);
+        color: hsl(0 0% 3.9%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+      }
+      .dark .app-preloader {
+        background-color: hsl(0 0% 3.9%);
+        color: hsl(0 0% 98%);
+      }
+      .spinner {
+        width: 40px;
+        height: 40px;
+        margin-bottom: 20px;
+        border: 4px solid hsl(0 0% 89.8%);
+        border-left-color: hsl(217.2 91.2% 59.8%);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+      .dark .spinner {
+        border: 4px solid hsl(0 0% 14.9%);
+        border-left-color: hsl(217.2 91.2% 59.8%);
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+      .app-preloader-text {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        font-size: 16px;
+        color: hsl(0 0% 45.1%);
+      }
+      .dark .app-preloader-text {
+        color: hsl(0 0% 63.9%);
+      }
+      .app-preloader-error {
+        margin-top: 16px;
+        padding: 12px;
+        background-color: hsl(0 84.2% 60.2% / 0.1);
+        border: 1px solid hsl(0 84.2% 60.2% / 0.2);
+        border-radius: 6px;
+        max-width: 80%;
+        font-size: 14px;
+        color: hsl(0 84.2% 60.2%);
+        display: none;
+      }
+      .dark .app-preloader-error {
+        background-color: hsl(0 62.8% 30.6% / 0.1);
+        border: 1px solid hsl(0 62.8% 30.6% / 0.2);
+        color: hsl(0 62.8% 30.6%);
+      }
+    </style>
+    <script>
+      // Check preferred color scheme for preloader
+      if (localStorage.getItem('vite-ui-theme') === 'dark' || 
+          (!localStorage.getItem('vite-ui-theme') && 
+           window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+      }
+    </script>
+  </head>
+  <body>
+    <!-- Preloader that shows before React loads -->
+    <div id="app-preloader" class="app-preloader">
+      <div class="spinner"></div>
+      <p class="app-preloader-text">Loading Subscription Manager...</p>
+      <div id="app-preloader-error" class="app-preloader-error"></div>
+    </div>
+
+    <div id="root"></div>
+
+    <!-- Error handler for environment variables -->
+    <script>
+      window.addEventListener('DOMContentLoaded', function() {
+        // Check for environment variables and display an error if they're missing
+        setTimeout(function() {
+          if (document.getElementById('app-preloader') && 
+              document.getElementById('app-preloader').style.display !== 'none') {
+            var errorElement = document.getElementById('app-preloader-error');
+            if (errorElement) {
+              errorElement.style.display = 'block';
+              errorElement.textContent = 'Application is taking longer than expected to load. This might indicate a configuration issue.';
+            }
+          }
+        }, 5000);
+      });
+      
+      // Global error handler
+      window.onerror = function(message, source, lineno, colno, error) {
+        console.error('Global error:', message, source, lineno, colno);
+        
+        // Check if this is an environment variable error
+        if (message && message.toString().includes('supabaseUrl')) {
+          var errorElement = document.getElementById('app-preloader-error');
+          if (errorElement) {
+            errorElement.style.display = 'block';
+            errorElement.textContent = 'Database configuration error: ' + message;
+          }
+        }
+      };
+    </script>
+
+    <script type="module" src="/src/main.tsx"></script>
+    
+    <script>
+      // Hide preloader once the app loads
+      window.addEventListener('load', function() {
+        // Allow React to initialize first
+        setTimeout(function() {
+          var preloader = document.getElementById('app-preloader');
+          if (preloader) {
+            preloader.style.display = 'none';
+          }
+        }, 300);
+      });
+    </script>
+  </body>
+</html>

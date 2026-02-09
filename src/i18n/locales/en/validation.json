@@ -1,0 +1,15 @@
+{
+  "required": "This field is required",
+  "minLength": "Must be at least {{min}} characters",
+  "maxLength": "Must be no more than {{max}} characters",
+  "number": "Please enter a valid number",
+  "invalidFormat": "Invalid format",
+  "positiveNumber": "Please enter a positive number",
+  "nonNegativeNumber": "Please enter a non-negative number (0 or greater)",
+  "decimalPlaces": "Maximum {{max}} decimal places allowed",
+  "futureDate": "Date must be in the future",
+  "pastDate": "Date must be in the past",
+  "invalidUrl": "Please enter a valid URL",
+  "passwordMismatch": "Passwords do not match",
+  "invalidPhone": "Please enter a valid phone number"
+}

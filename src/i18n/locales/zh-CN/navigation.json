@@ -1,0 +1,10 @@
+{
+  "home": "首页",
+  "subscriptions": "订阅管理",
+  "reports": "报表",
+  "settings": "设置",
+  "dashboard": "仪表板",
+  "expenseReports": "支出报表",
+  "notifications": "通知历史",
+  "logout": "登出"
+}

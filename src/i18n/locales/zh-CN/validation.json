@@ -1,0 +1,15 @@
+{
+  "required": "此字段为必填项",
+  "minLength": "至少需要 {{min}} 个字符",
+  "maxLength": "最多允许 {{max}} 个字符",
+  "number": "请输入有效的数字",
+  "invalidFormat": "格式无效",
+  "positiveNumber": "请输入正数",
+  "nonNegativeNumber": "请输入非负数（0或更大）",
+  "decimalPlaces": "最多允许 {{max}} 位小数",
+  "futureDate": "日期必须是未来日期",
+  "pastDate": "日期必须是过去日期",
+  "invalidUrl": "请输入有效的URL",
+  "passwordMismatch": "密码不匹配",
+  "invalidPhone": "请输入有效的电话号码"
+}
