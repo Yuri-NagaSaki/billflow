@@ -99,7 +99,7 @@ app.notFound(async (c) => {
 export default {
   fetch: app.fetch,
   scheduled: async (event: ScheduledEvent, env: HonoEnv['Bindings'], ctx: ExecutionContext) => {
-    if (event.cron === '0 2 * * *') {
+    if (event.cron === '0 18 * * *') {
       ctx.waitUntil(updateExchangeRates(env));
       const managementService = new SubscriptionManagementService(env);
       ctx.waitUntil(managementService.processAutoRenewals());
@@ -107,7 +107,7 @@ export default {
       return;
     }
 
-    if (event.cron === '0 * * * *') {
+    if (event.cron === '* * * * *') {
       const scheduler = new SchedulerService(env);
       const shouldRun = await scheduler.shouldRun(new Date());
       if (shouldRun) {
