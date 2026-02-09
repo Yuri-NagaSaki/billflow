@@ -33,6 +33,11 @@ A modern subscription management system rebuilt for **Cloudflare Workers**. It p
 
 ## Quick Deploy (Cloudflare Workers)
 
+Template deploy notes:
+- You must create a D1 database, set the `database_id` in `wrangler.toml`, and apply migrations. Without migrations, login will fail.
+- If you did not set `ADMIN_PASSWORD`, the default login is `admin` / `admin` (change it in Settings after login).
+- Automatic exchange rate updates require `EXCHANGE_RATE_API_KEY` (ExchangeRate-API). Without it, rates will not auto-update.
+
 1. Create a D1 database:
    ```bash
    wrangler d1 create billflow

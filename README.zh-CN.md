@@ -33,6 +33,11 @@
 
 ## 一键部署（Cloudflare Workers）
 
+模板部署注意事项：
+- 需要先创建 D1 数据库，填写 `wrangler.toml` 里的 `database_id`，并执行迁移；否则无法登录。
+- 若未设置 `ADMIN_PASSWORD`，默认账号/密码为 `admin` / `admin`（登录后请在设置中修改）。
+- 自动汇率更新需要 `EXCHANGE_RATE_API_KEY`（ExchangeRate-API），未配置则不会自动更新。
+
 1. 创建 D1 数据库：
    ```bash
    wrangler d1 create billflow

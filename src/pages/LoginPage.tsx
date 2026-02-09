@@ -49,6 +49,7 @@ export default function LoginPage() {
               <label htmlFor="password" className="text-sm font-medium">{t('password')}</label>
               <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
             </div>
+            <p className="text-xs text-muted-foreground">{t('defaultHint')}</p>
             {(localError || error) && (
               <p className="text-sm text-red-600">{localError ? t('invalidCredentials') : error}</p>
             )}
