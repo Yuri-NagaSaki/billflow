@@ -169,6 +169,74 @@ export const TelegramConfig: React.FC<TelegramConfigProps> = ({ userId, onConfig
     }
   };
 
+  const saveBotToken = async (token: string, silent = false) => {
+    if (!token) {
+      if (!silent) {
+        toast({
+          title: t('errors.telegramNotConfigured'),
+          description: t('botTokenHelp'),
+          variant: 'destructive'
+        });
+      }
+      return false;
+    }
+
+    try {
+      setSavingToken(true);
+      await notificationApi.setTelegramBotToken(token);
+      setBotTokenInput('');
+      await loadBotInfo();
+      if (!silent) {
+        toast({
+          title: t('tokenSaved'),
+          description: t('tokenSaved')
+        });
+      }
+      return true;
+    } catch (error) {
+      console.error('Failed to save Telegram bot token:', error);
+      if (!silent) {
+        toast({
+          title: t('tokenSaveFailed'),
+          description: t('tokenSaveFailed'),
+          variant: 'destructive'
+        });
+      }
+      return false;
+    } finally {
+      setSavingToken(false);
+    }
+  };
+
+  const ensureTokenConfigured = async () => {
+    const token = botTokenInput.trim();
+    if (token) {
+      const saved = await saveBotToken(token, true);
+      if (!saved) return false;
+    }
+
+    try {
+      const status = await notificationApi.getTelegramConfigStatus();
+      if (!status?.configured) {
+        toast({
+          title: t('errors.telegramNotConfigured'),
+          description: t('botTokenHelp'),
+          variant: 'destructive'
+        });
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.error('Failed to verify Telegram bot token:', error);
+      toast({
+        title: t('tokenSaveFailed'),
+        description: t('tokenSaveFailed'),
+        variant: 'destructive'
+      });
+      return false;
+    }
+  };
+
   const handleSave = async () => {
     if (!config.chat_id.trim()) {
       toast({
@@ -181,6 +249,11 @@ export const TelegramConfig: React.FC<TelegramConfigProps> = ({ userId, onConfig
 
     try {
       setSaving(true);
+      const token = botTokenInput.trim();
+      if (token) {
+        const saved = await saveBotToken(token, true);
+        if (!saved) return;
+      }
 
       // 先保存到本地存储
       setTelegramConfig({
@@ -212,34 +285,7 @@ export const TelegramConfig: React.FC<TelegramConfigProps> = ({ userId, onConfig
   };
 
   const handleSaveToken = async () => {
-    if (!botTokenInput.trim()) {
-      toast({
-        title: t('errors.telegramNotConfigured'),
-        description: t('botTokenHelp'),
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    try {
-      setSavingToken(true);
-      await notificationApi.setTelegramBotToken(botTokenInput.trim());
-      setBotTokenInput('');
-      await loadBotInfo();
-      toast({
-        title: t('tokenSaved'),
-        description: t('tokenSaved')
-      });
-    } catch (error) {
-      console.error('Failed to save Telegram bot token:', error);
-      toast({
-        title: t('tokenSaveFailed'),
-        description: t('tokenSaveFailed'),
-        variant: 'destructive'
-      });
-    } finally {
-      setSavingToken(false);
-    }
+    await saveBotToken(botTokenInput.trim(), false);
   };
 
   const handleTest = async () => {
@@ -253,6 +299,8 @@ export const TelegramConfig: React.FC<TelegramConfigProps> = ({ userId, onConfig
     }
 
     try {
+      const tokenReady = await ensureTokenConfigured();
+      if (!tokenReady) return;
       setTesting(true);
       await notificationApi.testNotification('telegram');
       toast({
@@ -327,19 +375,20 @@ export const TelegramConfig: React.FC<TelegramConfigProps> = ({ userId, onConfig
         {/* Bot Token Input */}
         <div className="space-y-2">
           <Label htmlFor="bot-token">{t('botToken')}</Label>
-          <div className="flex gap-2">
-            <Input
-              id="bot-token"
-              type="password"
-              value={botTokenInput}
-              onChange={(e) => setBotTokenInput(e.target.value)}
-              placeholder="123456:ABCDEF..."
-              disabled={savingToken || loading}
-            />
-            <Button
-              onClick={handleSaveToken}
-              disabled={savingToken || loading || !botTokenInput.trim()}
-            >
+        <div className="flex gap-2">
+          <Input
+            id="bot-token"
+            type="password"
+            value={botTokenInput}
+            onChange={(e) => setBotTokenInput(e.target.value)}
+            placeholder="123456:ABCDEF..."
+            disabled={savingToken || loading}
+          />
+          <Button
+            type="button"
+            onClick={handleSaveToken}
+            disabled={savingToken || loading || !botTokenInput.trim()}
+          >
               {savingToken ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
@@ -364,6 +413,7 @@ export const TelegramConfig: React.FC<TelegramConfigProps> = ({ userId, onConfig
             />
             <Button
               variant="outline"
+              type="button"
               onClick={() => validateChatId(config.chat_id)}
               disabled={validating || !config.chat_id.trim()}
             >
@@ -403,6 +453,7 @@ export const TelegramConfig: React.FC<TelegramConfigProps> = ({ userId, onConfig
         {/* Action Buttons */}
         <div className="flex gap-2">
           <Button 
+            type="button"
             onClick={handleSave} 
             disabled={saving || loading || !config.chat_id.trim()}
           >
@@ -415,8 +466,9 @@ export const TelegramConfig: React.FC<TelegramConfigProps> = ({ userId, onConfig
           </Button>
           <Button 
             variant="outline" 
+            type="button"
             onClick={handleTest} 
-            disabled={testing || loading || !config.chat_id.trim() || chatIdValid === false}
+            disabled={testing || loading || !config.chat_id.trim()}
           >
             {testing ? (
               <Loader2 className="h-4 w-4 animate-spin" />
