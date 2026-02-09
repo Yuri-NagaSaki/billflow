@@ -18,7 +18,7 @@
 ## 技术栈
 
 ### 前端
-- React 18 + TypeScript
+- React 19 + TypeScript
 - Vite + Tailwind CSS + shadcn/ui
 - Zustand + React Router
 - Recharts + Radix UI

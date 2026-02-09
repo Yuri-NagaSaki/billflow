@@ -18,7 +18,7 @@ A modern subscription management system rebuilt for **Cloudflare Workers**. It p
 ## Tech Stack
 
 ### Frontend
-- React 18 + TypeScript
+- React 19 + TypeScript
 - Vite + Tailwind CSS + shadcn/ui
 - Zustand + React Router
 - Recharts + Radix UI
