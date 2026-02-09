@@ -129,7 +129,8 @@ export const TelegramConfig: React.FC<TelegramConfigProps> = ({ userId, onConfig
   }, [userId, loadConfig, loadBotInfo]);
 
   const validateChatId = async (chatId: string) => {
-    if (!chatId.trim()) {
+    const trimmed = chatId.trim();
+    if (!trimmed) {
       setChatIdValid(null);
       setChannelValidated('telegram', false);
       return;
@@ -137,7 +138,7 @@ export const TelegramConfig: React.FC<TelegramConfigProps> = ({ userId, onConfig
 
     try {
       setValidating(true);
-      const response = await notificationApi.validateChatId(chatId);
+      const response = await notificationApi.validateChatId(trimmed);
       // The API client already extracts the data field, so response is the data directly
       const isValid = (response as ValidationResponse)?.success || false;
       setChatIdValid(isValid);
@@ -238,7 +239,8 @@ export const TelegramConfig: React.FC<TelegramConfigProps> = ({ userId, onConfig
   };
 
   const handleSave = async () => {
-    if (!config.chat_id.trim()) {
+    const chatId = config.chat_id.trim();
+    if (!chatId) {
       toast({
         title: t('errors.invalidChatId'),
         description: t('chatIdHelp'),
@@ -257,12 +259,12 @@ export const TelegramConfig: React.FC<TelegramConfigProps> = ({ userId, onConfig
 
       // 先保存到本地存储
       setTelegramConfig({
-        chat_id: config.chat_id,
+        chat_id: chatId,
         validated: chatIdValid ?? false
       });
 
       // 然后保存到服务器
-      await notificationApi.configureChannel('telegram', { chat_id: config.chat_id });
+      await notificationApi.configureChannel('telegram', { chat_id: chatId });
 
       // 重新加载配置以确保显示最新保存的数据
       await loadConfig();
@@ -289,7 +291,8 @@ export const TelegramConfig: React.FC<TelegramConfigProps> = ({ userId, onConfig
   };
 
   const handleTest = async () => {
-    if (!config.chat_id.trim()) {
+    const chatId = config.chat_id.trim();
+    if (!chatId) {
       toast({
         title: t('errors.invalidChatId'),
         description: t('chatIdHelp'),
@@ -303,8 +306,8 @@ export const TelegramConfig: React.FC<TelegramConfigProps> = ({ userId, onConfig
       if (!tokenReady) return;
       setTesting(true);
       // Ensure latest chat_id is saved before test
-      await notificationApi.configureChannel('telegram', { chat_id: config.chat_id });
-      setTelegramConfig({ chat_id: config.chat_id, validated: chatIdValid ?? false });
+      await notificationApi.configureChannel('telegram', { chat_id: chatId });
+      setTelegramConfig({ chat_id: chatId, validated: chatIdValid ?? false });
       await notificationApi.testNotification('telegram');
       toast({
         title: t('testSuccess'),
@@ -312,9 +315,10 @@ export const TelegramConfig: React.FC<TelegramConfigProps> = ({ userId, onConfig
       });
     } catch (error) {
       console.error('Failed to send test notification:', error);
+      const message = error instanceof Error ? error.message : t('errors.sendFailed');
       toast({
         title: t('testFailed'),
-        description: t('errors.sendFailed'),
+        description: message,
         variant: 'destructive'
       });
     } finally {
@@ -417,7 +421,7 @@ export const TelegramConfig: React.FC<TelegramConfigProps> = ({ userId, onConfig
             <Button
               variant="outline"
               type="button"
-              onClick={() => validateChatId(config.chat_id)}
+              onClick={() => validateChatId(config.chat_id.trim())}
               disabled={validating || !config.chat_id.trim()}
             >
               {validating ? (
