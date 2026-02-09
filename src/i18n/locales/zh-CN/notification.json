@@ -12,6 +12,7 @@
   "testSuccess": "测试消息发送成功",
   "testFailed": "测试消息发送失败",
   "save": "保存",
+  "saveFirst": "请先保存配置",
   "configureChannel": "配置渠道",
   "channelConfigured": "渠道配置成功",
   "channelNotConfigured": "渠道未配置",

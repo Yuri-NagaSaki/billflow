@@ -12,6 +12,7 @@
   "testSuccess": "Test message sent successfully",
   "testFailed": "Failed to send test message",
   "save": "Save",
+  "saveFirst": "Please save configuration first",
   "configureChannel": "Configure Channel",
   "channelConfigured": "Channel configured successfully",
   "channelNotConfigured": "Channel not configured",
