@@ -81,7 +81,7 @@
     "eslint": "^9.22.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.19",
-    "globals": "^16.0.0",
+    "globals": "^17.3.0",
     "miniflare": "^3.20250124.0",
     "postcss": "^8.5.6",
     "tailwindcss": "3",
