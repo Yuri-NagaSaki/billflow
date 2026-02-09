@@ -626,6 +626,7 @@ export function SubscriptionsPage() {
               >
                 {category?.label || categoryValue}
                 <button
+                  type="button"
                   onClick={() => toggleCategoryFilter(categoryValue)}
                   className="ml-1 rounded-full hover:bg-muted-foreground/20 p-0.5"
                 >
@@ -660,6 +661,7 @@ export function SubscriptionsPage() {
               >
                 {cycle?.label || cycleValue}
                 <button
+                  type="button"
                   onClick={() => toggleBillingCycleFilter(cycleValue)}
                   className="ml-1 rounded-full hover:bg-muted-foreground/20 p-0.5"
                 >

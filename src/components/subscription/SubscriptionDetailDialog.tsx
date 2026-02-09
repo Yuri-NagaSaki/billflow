@@ -130,6 +130,7 @@ const ContentComponent = ({
     <div className="w-full">
       <div className="grid w-full grid-cols-2 mb-4 h-10 items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground">
         <button
+          type="button"
           onClick={() => setActiveTab("details")}
           className={`inline-flex items-center justify-center whitespace-nowrap rounded-md px-2 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
             activeTab === "details"
@@ -140,6 +141,7 @@ const ContentComponent = ({
           {t('common:details')}
         </button>
         <button
+          type="button"
           onClick={() => setActiveTab("payments")}
           className={`inline-flex items-center justify-center whitespace-nowrap rounded-md px-2 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
             activeTab === "payments"

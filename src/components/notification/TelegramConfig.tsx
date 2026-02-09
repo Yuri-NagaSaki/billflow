@@ -302,6 +302,9 @@ export const TelegramConfig: React.FC<TelegramConfigProps> = ({ userId, onConfig
       const tokenReady = await ensureTokenConfigured();
       if (!tokenReady) return;
       setTesting(true);
+      // Ensure latest chat_id is saved before test
+      await notificationApi.configureChannel('telegram', { chat_id: config.chat_id });
+      setTelegramConfig({ chat_id: config.chat_id, validated: chatIdValid ?? false });
       await notificationApi.testNotification('telegram');
       toast({
         title: t('testSuccess'),
