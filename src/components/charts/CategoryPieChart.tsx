@@ -1,4 +1,4 @@
-import { PieChart, Pie, Cell, Tooltip } from 'recharts'
+import { PieChart, Pie, Cell, Tooltip, type PieLabelRenderProps } from 'recharts'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartConfig } from "@/components/ui/chart"
 import { formatCurrencyAmount } from "@/utils/currency"
@@ -75,7 +75,7 @@ export function CategoryPieChart({ data, currency, className, descriptionKey }: 
                       cx="50%"
                       cy="50%"
                       labelLine={false}
-                      label={({ percentage }) => `${percentage.toFixed(1)}%`}
+                      label={(props: PieLabelRenderProps & { percentage?: number }) => `${(props.percentage ?? 0).toFixed(1)}%`}
                       outerRadius="80%"
                       innerRadius={0}
                       fill="hsl(var(--chart-1))"

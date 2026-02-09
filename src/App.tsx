@@ -1,5 +1,5 @@
 import { Route, Routes } from "react-router-dom"
-import { Suspense, lazy } from "react"
+import React, { Suspense, lazy } from "react"
 import { Toaster } from "./components/ui/toaster"
 import { ThemeProvider } from "./components/ThemeProvider"
 import { MainLayout } from "./components/layouts/MainLayout"
@@ -22,7 +22,7 @@ function App() {
   const { user, fetchMe, initialized } = useAuthStore()
   useEffect(() => { fetchMe() }, [fetchMe])
 
-  const RequireAuth = ({ children }: { children: JSX.Element }) => {
+  const RequireAuth = ({ children }: { children: React.JSX.Element }) => {
     if (!initialized) {
       return <div className="flex items-center justify-center h-64">{t('loading')}</div>
     }
