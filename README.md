@@ -45,7 +45,9 @@ Template deploy notes:
 
 2. Update `wrangler.toml` with the generated `database_id`.
 
-3. Apply migrations:
+3. Migrations:
+   - The worker will auto-apply migrations on first request.
+   - Optional manual apply:
    ```bash
    wrangler d1 migrations apply billflow --local
    wrangler d1 migrations apply billflow

@@ -20,6 +20,7 @@ import { SubscriptionManagementService } from './services/subscriptionManagement
 import { SchedulerService } from './services/schedulerService';
 import { NotificationService } from './services/notificationService';
 import { ensureAdminUser } from './services/adminUserService';
+import { ensureSchema } from './services/schemaService';
 import { requireLogin } from './middleware/requireLogin';
 
 const app = new Hono<HonoEnv>();
@@ -27,6 +28,7 @@ const app = new Hono<HonoEnv>();
 app.use('*', cors({ origin: '*', credentials: true }));
 
 app.use('*', async (c, next) => {
+  await ensureSchema(c.env);
   await ensureAdminUser(c.env);
   await next();
 });

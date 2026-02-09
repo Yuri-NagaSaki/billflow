@@ -45,7 +45,9 @@
 
 2. 将返回的 `database_id` 写入 `wrangler.toml`。
 
-3. 应用迁移：
+3. 数据库迁移：
+   - Worker 会在首次请求时自动执行迁移。
+   - 可选手动执行：
    ```bash
    wrangler d1 migrations apply billflow --local
    wrangler d1 migrations apply billflow
