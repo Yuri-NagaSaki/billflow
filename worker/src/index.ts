@@ -27,9 +27,24 @@ const app = new Hono<HonoEnv>();
 
 app.use('*', cors({ origin: '*', credentials: true }));
 
+app.onError((err, c) => {
+  console.error('Unhandled error', err);
+  return c.json({ error: err?.message || 'Internal Server Error' }, 500);
+});
+
 app.use('*', async (c, next) => {
-  await ensureSchema(c.env);
-  await ensureAdminUser(c.env);
+  try {
+    await ensureSchema(c.env);
+  } catch (error) {
+    console.error('Schema migration failed', error);
+    return c.json({ error: 'Schema migration failed' }, 500);
+  }
+  try {
+    await ensureAdminUser(c.env);
+  } catch (error) {
+    console.error('Admin bootstrap failed', error);
+    return c.json({ error: 'Admin bootstrap failed' }, 500);
+  }
   await next();
 });
 
