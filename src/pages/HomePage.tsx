@@ -24,6 +24,7 @@ import {
 import { useSettingsStore } from "@/store/settingsStore"
 import { formatCurrencyAmount } from "@/utils/currency"
 import { getCurrentMonthSpending, getCurrentYearSpending } from "@/lib/expense-analytics-api"
+import { useUpcomingRenewals, useRecentlyPaid, useSpendingByCategory } from "@/store/subscriptionHooks"
 
 import { SubscriptionForm } from "@/components/subscription/SubscriptionForm"
 import { StatCard } from "@/components/dashboard/StatCard"
@@ -39,18 +40,16 @@ function HomePage() {
   const [showImportModal, setShowImportModal] = useState(false)
   // Get the default view from settings
   const { currency: userCurrency, fetchSettings } = useSettingsStore()
-  
+
   const {
     subscriptions,
     bulkAddSubscriptions,
     updateSubscription,
     fetchSubscriptions,
-    getUpcomingRenewals,
-    getRecentlyPaid,
-    getSpendingByCategory,
     initializeData,
     initializeWithRenewals,
-    isLoading
+    isLoading,
+    isBackgroundRefreshing
   } = useSubscriptionStore()
 
   // State for API-based spending data
@@ -171,12 +170,13 @@ function HomePage() {
 
 
 
-  // Get data for dashboard (non-API data)
-  const upcomingRenewals = getUpcomingRenewals(7)
-  const recentlyPaidSubscriptions = getRecentlyPaid(7)
-  const spendingByCategory = getSpendingByCategory()
+  // Get data for dashboard using memoized hooks
+  const upcomingRenewals = useUpcomingRenewals(7)
+  const recentlyPaidSubscriptions = useRecentlyPaid(7)
+  const spendingByCategory = useSpendingByCategory()
 
-  if (isLoading || isLoadingSpending) {
+  // Only show full-screen spinner on first load with no data
+  if (subscriptions.length === 0 && isLoading) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-16rem)]">
         <div className="text-center">
@@ -203,7 +203,7 @@ function HomePage() {
           size="sm"
           className="flex items-center gap-2"
         >
-          <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`h-4 w-4 ${isRefreshing || isBackgroundRefreshing ? 'animate-spin' : ''}`} />
           {isRefreshing ? t('common:refreshing') : t('common:refresh')}
         </Button>
       </div>
@@ -213,14 +213,14 @@ function HomePage() {
           <div className="grid gap-4 md:grid-cols-3">
             <StatCard
               title={t('common:monthlySpending')}
-              value={formatCurrencyAmount(monthlySpending, userCurrency)}
+              value={isLoadingSpending ? '---' : formatCurrencyAmount(monthlySpending, userCurrency)}
               description={t('common:currentMonthExpenses')}
               icon={Calendar}
               iconColor="text-blue-500"
             />
             <StatCard
               title={t('common:yearlySpending')}
-              value={formatCurrencyAmount(yearlySpending, userCurrency)}
+              value={isLoadingSpending ? '---' : formatCurrencyAmount(yearlySpending, userCurrency)}
               description={t('common:currentYearTotal')}
               icon={Calendar}
               iconColor="text-purple-500"
@@ -233,7 +233,7 @@ function HomePage() {
               iconColor="text-green-500"
             />
           </div>
-          
+
           <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
             <RecentlyPaid
               subscriptions={recentlyPaidSubscriptions}
@@ -258,7 +258,7 @@ function HomePage() {
           onSubmit={(data) => handleUpdateSubscription(editingSubscription.id, data)}
         />
       )}
-      
+
       <ImportModal
         open={showImportModal}
         onOpenChange={setShowImportModal}

@@ -176,7 +176,13 @@ interface SubscriptionState {
   paymentMethods: PaymentMethodOption[]
   subscriptionPlans: SubscriptionPlanOption[]
   isLoading: boolean
+  isBackgroundRefreshing: boolean
   error: string | null
+
+  // Freshness tracking
+  lastFetchedAt: number | null
+  categoriesLastFetchedAt: number | null
+  paymentMethodsLastFetchedAt: number | null
 
   // CRUD operations
   addSubscription: (subscription: Omit<Subscription, 'id' | 'lastBillingDate'>) => Promise<{ error: unknown | null }>
@@ -184,9 +190,9 @@ interface SubscriptionState {
   updateSubscription: (id: number, subscription: Partial<Subscription>) => Promise<{ error: unknown | null }>
   deleteSubscription: (id: number) => Promise<{ error: unknown | null }>
   resetSubscriptions: () => void
-  fetchSubscriptions: () => Promise<void>
-  fetchCategories: () => Promise<void>
-  fetchPaymentMethods: () => Promise<void>
+  fetchSubscriptions: (options?: { force?: boolean }) => Promise<void>
+  fetchCategories: (options?: { force?: boolean }) => Promise<void>
+  fetchPaymentMethods: (options?: { force?: boolean }) => Promise<void>
 
   // Renewal operations
   processAutoRenewals: (skipRefresh?: boolean) => Promise<{ processed: number; errors: number }>
@@ -269,40 +275,70 @@ export const useSubscriptionStore = create<SubscriptionState>()(
       paymentMethods: initialPaymentMethods,
       subscriptionPlans: initialSubscriptionPlans,
       isLoading: false,
+      isBackgroundRefreshing: false,
       error: null,
+      lastFetchedAt: null,
+      categoriesLastFetchedAt: null,
+      paymentMethodsLastFetchedAt: null,
       
       // Fetch subscriptions from the backend API
-      fetchSubscriptions: async () => {
-        set({ isLoading: true, error: null })
+      fetchSubscriptions: async (options) => {
+        const FRESHNESS_TTL = 60_000 // 60 seconds
+        const { lastFetchedAt, subscriptions: existing } = get()
+
+        // Skip if data is fresh and not forced
+        if (!options?.force && lastFetchedAt && Date.now() - lastFetchedAt < FRESHNESS_TTL) {
+          return
+        }
+
+        // If we already have data, do a background refresh (no spinner)
+        if (existing.length > 0) {
+          set({ isBackgroundRefreshing: true, error: null })
+        } else {
+          set({ isLoading: true, error: null })
+        }
+
         try {
           const data = await apiClient.get<SubscriptionApiData[]>('/subscriptions')
-
           const transformedData = data.map(transformFromApi)
-          set({ subscriptions: transformedData, isLoading: false })
+          set({ subscriptions: transformedData, isLoading: false, isBackgroundRefreshing: false, lastFetchedAt: Date.now() })
         } catch (error: unknown) {
           console.error('Error fetching subscriptions:', error)
           const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
-          set({ error: errorMessage, isLoading: false, subscriptions: [] }) // Clear subscriptions on error
+          if (existing.length > 0) {
+            // Keep existing data visible on background refresh failure
+            set({ error: errorMessage, isBackgroundRefreshing: false })
+          } else {
+            set({ error: errorMessage, isLoading: false, isBackgroundRefreshing: false, subscriptions: [] })
+          }
         }
       },
 
       // Fetch categories from API
-      fetchCategories: async () => {
+      fetchCategories: async (options) => {
+        const FRESHNESS_TTL = 60_000
+        const { categoriesLastFetchedAt } = get()
+        if (!options?.force && categoriesLastFetchedAt && Date.now() - categoriesLastFetchedAt < FRESHNESS_TTL) {
+          return
+        }
         try {
           const data = await apiClient.get<CategoryOption[]>('/categories')
-
-          set({ categories: data })
+          set({ categories: data, categoriesLastFetchedAt: Date.now() })
         } catch (error) {
           console.error('Error fetching categories:', error)
         }
       },
 
       // Fetch payment methods from API
-      fetchPaymentMethods: async () => {
+      fetchPaymentMethods: async (options) => {
+        const FRESHNESS_TTL = 60_000
+        const { paymentMethodsLastFetchedAt } = get()
+        if (!options?.force && paymentMethodsLastFetchedAt && Date.now() - paymentMethodsLastFetchedAt < FRESHNESS_TTL) {
+          return
+        }
         try {
           const data = await apiClient.get<PaymentMethodOption[]>('/payment-methods')
-
-          set({ paymentMethods: data })
+          set({ paymentMethods: data, paymentMethodsLastFetchedAt: Date.now() })
         } catch (error) {
           console.error('Error fetching payment methods:', error)
         }
@@ -322,7 +358,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
           await apiClient.post('/protected/subscriptions', apiSubscription)
 
           // Refetch all subscriptions to get the new one with its DB-generated ID
-          await get().fetchSubscriptions()
+          await get().fetchSubscriptions({ force: true })
           return { error: null }
         } catch (error: unknown) {
           console.error('Error adding subscription:', error)
@@ -348,7 +384,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
 
           await apiClient.post('/protected/subscriptions/bulk', apiSubscriptions);
 
-          await get().fetchSubscriptions();
+          await get().fetchSubscriptions({ force: true });
           return { error: null };
         } catch (error: unknown) {
           console.error('Error bulk adding subscriptions:', error);
@@ -373,9 +409,9 @@ export const useSubscriptionStore = create<SubscriptionState>()(
           }
           const apiSubscription = transformToApi(subscriptionWithLastBilling)
           await apiClient.put(`/protected/subscriptions/${id}`, apiSubscription)
-          
+
           // Refetch to ensure data consistency
-          await get().fetchSubscriptions()
+          await get().fetchSubscriptions({ force: true })
           return { error: null }
         } catch (error: unknown) {
           console.error('Error updating subscription:', error)
@@ -391,7 +427,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
           await apiClient.delete(`/protected/subscriptions/${id}`)
 
           // Refetch to reflect the deletion
-          await get().fetchSubscriptions()
+          await get().fetchSubscriptions({ force: true })
           return { error: null }
         } catch (error: unknown) {
           console.error('Error deleting subscription:', error)
@@ -407,7 +443,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
           await apiClient.post('/protected/subscriptions/reset');
 
           // Refetch to ensure the UI is cleared
-          await get().fetchSubscriptions();
+          await get().fetchSubscriptions({ force: true });
           return { error: null };
         } catch (error: unknown) {
           console.error('Error resetting subscriptions:', error);
@@ -423,7 +459,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
           await apiClient.post('/protected/categories', category);
 
           // Refresh categories from server
-          await get().fetchCategories();
+          await get().fetchCategories({ force: true });
         } catch (error) {
           console.error('Error adding category:', error);
           throw error;
@@ -436,7 +472,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
           await apiClient.put(`/protected/categories/${encodeURIComponent(oldValue)}`, newCategory);
 
           // Refresh categories from server
-          await get().fetchCategories();
+          await get().fetchCategories({ force: true });
         } catch (error) {
           console.error('Error updating category:', error);
           throw error;
@@ -449,7 +485,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
           await apiClient.delete(`/protected/categories/${encodeURIComponent(value)}`);
 
           // Refresh categories from server
-          await get().fetchCategories();
+          await get().fetchCategories({ force: true });
         } catch (error) {
           console.error('Error deleting category:', error);
           throw error;
@@ -462,7 +498,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
           await apiClient.post('/protected/payment-methods', paymentMethod);
 
           // Refresh payment methods from server
-          await get().fetchPaymentMethods();
+          await get().fetchPaymentMethods({ force: true });
         } catch (error) {
           console.error('Error adding payment method:', error);
           throw error;
@@ -475,7 +511,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
           await apiClient.put(`/protected/payment-methods/${encodeURIComponent(oldValue)}`, newPaymentMethod);
 
           // Refresh payment methods from server
-          await get().fetchPaymentMethods();
+          await get().fetchPaymentMethods({ force: true });
         } catch (error) {
           console.error('Error updating payment method:', error);
           throw error;
@@ -488,7 +524,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
           await apiClient.delete(`/protected/payment-methods/${encodeURIComponent(value)}`);
 
           // Refresh payment methods from server
-          await get().fetchPaymentMethods();
+          await get().fetchPaymentMethods({ force: true });
         } catch (error) {
           console.error('Error deleting payment method:', error);
           throw error;
@@ -674,7 +710,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
 
           // Only refresh subscriptions if not skipped and there were changes
           if (!skipRefresh && result.processed > 0) {
-            await get().fetchSubscriptions()
+            await get().fetchSubscriptions({ force: true })
           }
 
           return { processed: result.processed, errors: result.errors }
@@ -691,7 +727,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
 
           // Only refresh subscriptions if not skipped and there were changes
           if (!skipRefresh && result.processed > 0) {
-            await get().fetchSubscriptions()
+            await get().fetchSubscriptions({ force: true })
           }
 
           return { processed: result.processed, errors: result.errors }
@@ -707,7 +743,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
           const result = await apiClient.post<{ renewalData: RenewalData }>(`/protected/subscriptions/${id}/manual-renew`)
 
           // Refresh subscriptions to get updated data
-          await get().fetchSubscriptions()
+          await get().fetchSubscriptions({ force: true })
 
           return { error: null, renewalData: result.renewalData }
         } catch (error: unknown) {
@@ -719,9 +755,13 @@ export const useSubscriptionStore = create<SubscriptionState>()(
 
       // Simple initialization method without auto-renewals
       initializeData: async () => {
-        set({ isLoading: true, error: null })
+        const hasData = get().subscriptions.length > 0
+        // Only show full-screen loading on first load (no data yet)
+        if (!hasData) {
+          set({ isLoading: true, error: null })
+        }
         try {
-          // Fetch all data in parallel
+          // Fetch all data in parallel (freshness checks are inside each fetch)
           await Promise.all([
             get().fetchSubscriptions(),
             get().fetchCategories(),
@@ -737,13 +777,16 @@ export const useSubscriptionStore = create<SubscriptionState>()(
 
       // Combined initialization method with renewals (for manual trigger)
       initializeWithRenewals: async () => {
-        set({ isLoading: true, error: null })
+        const hasData = get().subscriptions.length > 0
+        if (!hasData) {
+          set({ isLoading: true, error: null })
+        }
         try {
-          // First fetch all data in parallel
+          // First fetch all data in parallel (force refresh for manual trigger)
           await Promise.all([
-            get().fetchSubscriptions(),
-            get().fetchCategories(),
-            get().fetchPaymentMethods()
+            get().fetchSubscriptions({ force: true }),
+            get().fetchCategories({ force: true }),
+            get().fetchPaymentMethods({ force: true })
           ])
 
           // Then process renewals without additional fetches
@@ -754,7 +797,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
 
           // Only fetch once more if there were any changes
           if (autoRenewalResult.processed > 0 || expiredResult.processed > 0) {
-            await get().fetchSubscriptions()
+            await get().fetchSubscriptions({ force: true })
 
             if (autoRenewalResult.processed > 0) {
               console.log(`Auto-renewed ${autoRenewalResult.processed} subscription(s)`)

@@ -1,3 +1,4 @@
+import { memo } from "react"
 import { useTranslation } from "react-i18next"
 import {
   Calendar,
@@ -43,7 +44,7 @@ interface SubscriptionCardProps {
   onViewDetails?: (subscription: Subscription) => void
 }
 
-export function SubscriptionCard({
+export const SubscriptionCard = memo(function SubscriptionCard({
   subscription,
   onEdit,
   onDelete,
@@ -61,9 +62,10 @@ export function SubscriptionCard({
     status,
     renewalType
   } = subscription
-  
-  // Get options from the store
-  const { categories, paymentMethods } = useSubscriptionStore()
+
+  // Get options from the store using precise selectors
+  const categories = useSubscriptionStore(state => state.categories)
+  const paymentMethods = useSubscriptionStore(state => state.paymentMethods)
   const { t } = useTranslation(['common', 'subscription'])
 
   // Get the category and payment method labels using unified utility functions
@@ -72,7 +74,7 @@ export function SubscriptionCard({
 
   const daysLeft = daysUntil(nextBillingDate)
   const isExpiringSoon = daysLeft <= 7
-  
+
   // Helper function to determine badge color based on urgency
   const getBadgeVariant = () => {
     if (status === 'cancelled') return "secondary"
@@ -162,7 +164,7 @@ export function SubscriptionCard({
           </DropdownMenuContent>
         </DropdownMenu>
       </CardHeader>
-      
+
       <CardContent className="flex-1 flex flex-col">
         <div className="flex justify-between items-center mb-2">
           <div className="font-medium">{formatWithUserCurrency(amount, currency)}</div>
@@ -170,7 +172,7 @@ export function SubscriptionCard({
             {getBillingCycleLabel(billingCycle)}
           </Badge>
         </div>
-        
+
         <div className="space-y-1 text-sm flex-1">
           <div className="flex items-center gap-2 text-muted-foreground">
             <Tag className="h-4 w-4" />
@@ -208,4 +210,4 @@ export function SubscriptionCard({
 
     </Card>
   )
-}
+})

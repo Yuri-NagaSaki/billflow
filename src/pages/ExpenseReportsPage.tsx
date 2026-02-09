@@ -1,16 +1,15 @@
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSubscriptionStore } from "@/store/subscriptionStore"
 import { useSettingsStore } from "@/store/settingsStore"
 import {
-  getApiMonthlyExpenses,
-  getApiCategoryExpenses,
-  getApiMonthlyCategoryExpenses,
-  getApiYearlyCategoryExpenses,
-  calculateYearlyExpensesFromMonthly,
   MonthlyExpense,
   YearlyExpense,
-  CategoryExpense
+  CategoryExpense,
+  calculateYearlyExpensesFromMonthly,
+  transformMonthlyCategorySummaries,
+  calculateCategoryExpensesFromNewApi,
+  transformMonthlyCategorySummariesToGroupedData,
+  transformMonthlyCategorySummariesToYearlyGroupedData,
 } from "@/lib/expense-analytics-api"
 import {
   convertMonthlyExpensesToInfo,
@@ -24,6 +23,7 @@ import { YearlyTrendChart } from "@/components/charts/YearlyTrendChart"
 import { CategoryPieChart } from "@/components/charts/CategoryPieChart"
 import { ExpenseInfoCards } from "@/components/charts/ExpenseInfoCards"
 import { apiClient } from '@/utils/api-client'
+import { getMonthlyCategorySummaries } from '@/services/monthlyCategorySummaryApi'
 import type { PaymentRecordApi } from '@/utils/dataTransform'
 
 
@@ -32,10 +32,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 
 export function ExpenseReportsPage() {
-  const { fetchSubscriptions, fetchCategories } = useSubscriptionStore()
   const { t } = useTranslation(['reports', 'common'])
   const { currency: userCurrency, fetchSettings } = useSettingsStore()
-  
+
   // Filter states
   const [selectedDateRange] = useState('Last 12 Months')
   const [selectedYearlyDateRange] = useState(() => {
@@ -43,16 +42,10 @@ export function ExpenseReportsPage() {
     return `${currentYear - 2} - ${currentYear}`
   })
 
-  // Fetch data when component mounts
-  const initializeData = useCallback(async () => {
-    await fetchSubscriptions()
-    await fetchCategories()
-    await fetchSettings()
-  }, [fetchSubscriptions, fetchCategories, fetchSettings])
-
+  // Fetch settings on mount (freshness check inside)
   useEffect(() => {
-    initializeData()
-  }, [initializeData])
+    fetchSettings()
+  }, [fetchSettings])
 
   // Get date range presets - create stable date range
   const currentDateRange = useMemo(() => {
@@ -94,17 +87,17 @@ export function ExpenseReportsPage() {
     return [
       {
         label: `${currentYear - 2} - ${currentYear}`,
-        startDate: new Date(currentYear - 2, 0, 1), // January 1st of 3 years ago
-        endDate: new Date(currentYear, currentMonth, new Date(currentYear, currentMonth + 1, 0).getDate()) // Last day of current month
+        startDate: new Date(currentYear - 2, 0, 1),
+        endDate: new Date(currentYear, currentMonth, new Date(currentYear, currentMonth + 1, 0).getDate())
       }
     ]
   }, [])
 
   const currentYearlyDateRange = useMemo(() => {
     return yearlyDateRangePresets.find(preset => preset.label === selectedYearlyDateRange)
-      || yearlyDateRangePresets[0] // Default to Recent 3 Years
+      || yearlyDateRangePresets[0]
   }, [selectedYearlyDateRange, yearlyDateRangePresets])
-  
+
   // State for API data
   const [monthlyExpenses, setMonthlyExpenses] = useState<MonthlyExpense[]>([])
   const [yearlyExpenses, setYearlyExpenses] = useState<YearlyExpense[]>([])
@@ -128,22 +121,17 @@ export function ExpenseReportsPage() {
   const [isLoadingYearlyExpenses, setIsLoadingYearlyExpenses] = useState(false)
   const [isLoadingCategoryExpenses, setIsLoadingCategoryExpenses] = useState(false)
   const [isLoadingYearlyCategoryExpenses, setIsLoadingYearlyCategoryExpenses] = useState(false)
-  const [, setIsLoadingMonthlyCategoryExpenses] = useState(false)
-  const [, setIsLoadingYearlyGroupedCategoryExpenses] = useState(false)
 
   const [isLoadingExpenseInfo, setIsLoadingExpenseInfo] = useState(false)
   const [expenseError, setExpenseError] = useState<string | null>(null)
   const [yearlyExpenseError, setYearlyExpenseError] = useState<string | null>(null)
   const [categoryExpenseError, setCategoryExpenseError] = useState<string | null>(null)
   const [yearlyCategoryExpenseError, setYearlyCategoryExpenseError] = useState<string | null>(null)
-  const [, setMonthlyCategoryExpenseError] = useState<string | null>(null)
-  const [, setYearlyGroupedCategoryExpenseError] = useState<string | null>(null)
 
   const [expenseInfoError, setExpenseInfoError] = useState<string | null>(null)
 
 
-
-  // Load expense info data (recent periods)
+  // Effect 1 - Expense info data (unique fillAccurateCounts logic)
   useEffect(() => {
     const loadExpenseInfoData = async () => {
       setIsLoadingExpenseInfo(true)
@@ -155,7 +143,13 @@ export function ExpenseReportsPage() {
         const startDate = new Date()
         startDate.setMonth(startDate.getMonth() - 12)
 
-        const allMonthlyData = await getApiMonthlyExpenses(startDate, endDate, userCurrency)
+        const startYear = startDate.getFullYear()
+        const startMonth = startDate.getMonth() + 1
+        const endYear = endDate.getFullYear()
+        const endMonth = endDate.getMonth() + 1
+
+        const response = await getMonthlyCategorySummaries(startYear, startMonth, endYear, endMonth)
+        const allMonthlyData = transformMonthlyCategorySummaries(response, userCurrency)
 
         // Process API data
         if (allMonthlyData && allMonthlyData.length > 0) {
@@ -195,24 +189,13 @@ export function ExpenseReportsPage() {
             yearly: yearlyFixed
           })
         } else {
-          // No data available, set empty state
-          setExpenseInfoData({
-            monthly: [],
-            quarterly: [],
-            yearly: []
-          })
+          setExpenseInfoData({ monthly: [], quarterly: [], yearly: [] })
         }
 
       } catch (error) {
         console.error('Failed to load expense info data:', error)
         setExpenseInfoError(error instanceof Error ? error.message : 'Failed to load expense info data')
-
-        // Set empty state on error
-        setExpenseInfoData({
-          monthly: [],
-          quarterly: [],
-          yearly: []
-        })
+        setExpenseInfoData({ monthly: [], quarterly: [], yearly: [] })
       } finally {
         setIsLoadingExpenseInfo(false)
       }
@@ -221,145 +204,85 @@ export function ExpenseReportsPage() {
     loadExpenseInfoData()
   }, [userCurrency])
 
-  // Load monthly expense data from API
+  // Effect 2 - Monthly date range: single API call, derive monthly expenses + category expenses + grouped category data
   useEffect(() => {
-    const loadMonthlyExpenseData = async () => {
+    const loadMonthlyRangeData = async () => {
       setIsLoadingExpenses(true)
-      setExpenseError(null)
-
-      try {
-        // Fetch monthly expenses from API
-        const monthlyData = await getApiMonthlyExpenses(currentDateRange.startDate, currentDateRange.endDate, userCurrency);
-        setMonthlyExpenses(monthlyData)
-
-      } catch (error) {
-        console.error('Failed to load monthly expense data:', error)
-        setExpenseError(error instanceof Error ? error.message : 'Failed to load monthly expense data')
-      } finally {
-        setIsLoadingExpenses(false)
-      }
-    }
-
-    const loadMonthlyCategoryExpenseData = async () => {
-      setIsLoadingMonthlyCategoryExpenses(true)
-      setMonthlyCategoryExpenseError(null)
-
-      try {
-        // Fetch monthly category expenses from API
-        const monthlyCategoryData = await getApiMonthlyCategoryExpenses(currentDateRange.startDate, currentDateRange.endDate, userCurrency);
-        setMonthlyCategoryExpenses(monthlyCategoryData)
-
-      } catch (error) {
-        console.error('Failed to load monthly category expense data:', error)
-        setMonthlyCategoryExpenseError(error instanceof Error ? error.message : 'Failed to load monthly category expense data')
-      } finally {
-        setIsLoadingMonthlyCategoryExpenses(false)
-      }
-    }
-
-    loadMonthlyExpenseData()
-    loadMonthlyCategoryExpenseData()
-  }, [currentDateRange, userCurrency])
-
-  // Load category expense data from API
-  useEffect(() => {
-    const loadCategoryExpenseData = async () => {
       setIsLoadingCategoryExpenses(true)
+      setExpenseError(null)
       setCategoryExpenseError(null)
 
       try {
-        // Fetch category expenses from API
-        const categoryData = await getApiCategoryExpenses(currentDateRange.startDate, currentDateRange.endDate, userCurrency);
+        const startYear = currentDateRange.startDate.getFullYear()
+        const startMonth = currentDateRange.startDate.getMonth() + 1
+        const endYear = currentDateRange.endDate.getFullYear()
+        const endMonth = currentDateRange.endDate.getMonth() + 1
+
+        // Single API call for the monthly date range
+        const response = await getMonthlyCategorySummaries(startYear, startMonth, endYear, endMonth)
+
+        // Derive all three datasets from the same response
+        const monthlyData = transformMonthlyCategorySummaries(response, userCurrency)
+        const categoryData = calculateCategoryExpensesFromNewApi(response, userCurrency)
+        const monthlyCategoryData = transformMonthlyCategorySummariesToGroupedData(response, userCurrency)
+
+        setMonthlyExpenses(monthlyData)
         setCategoryExpenses(categoryData)
+        setMonthlyCategoryExpenses(monthlyCategoryData)
 
       } catch (error) {
-        console.error('Failed to load category expense data:', error)
-        setCategoryExpenseError(error instanceof Error ? error.message : 'Failed to load category expense data')
+        console.error('Failed to load monthly range data:', error)
+        const msg = error instanceof Error ? error.message : 'Failed to load expense data'
+        setExpenseError(msg)
+        setCategoryExpenseError(msg)
       } finally {
+        setIsLoadingExpenses(false)
         setIsLoadingCategoryExpenses(false)
       }
     }
 
-    loadCategoryExpenseData()
+    loadMonthlyRangeData()
   }, [currentDateRange, userCurrency])
 
-  // Load yearly expense data from API (using separate date range)
+  // Effect 3 - Yearly date range: single API call, derive yearly expenses + yearly category expenses + yearly grouped data
   useEffect(() => {
-    const loadYearlyExpenseData = async () => {
+    const loadYearlyRangeData = async () => {
       setIsLoadingYearlyExpenses(true)
-      setYearlyExpenseError(null)
-
-      try {
-        // Fetch yearly expenses using the 3-year date range
-        const yearlyMonthlyData = await getApiMonthlyExpenses(
-          currentYearlyDateRange.startDate,
-          currentYearlyDateRange.endDate,
-          userCurrency
-        );
-
-        // Calculate yearly expenses from monthly data
-        const yearlyData = calculateYearlyExpensesFromMonthly(yearlyMonthlyData)
-        setYearlyExpenses(yearlyData)
-
-
-
-      } catch (error) {
-        console.error('Failed to load yearly expense data:', error)
-        setYearlyExpenseError(error instanceof Error ? error.message : 'Failed to load yearly expense data')
-      } finally {
-        setIsLoadingYearlyExpenses(false)
-      }
-    }
-
-    loadYearlyExpenseData()
-  }, [currentYearlyDateRange, userCurrency])
-
-  // Load yearly category expense data from API
-  useEffect(() => {
-    const loadYearlyCategoryExpenseData = async () => {
       setIsLoadingYearlyCategoryExpenses(true)
+      setYearlyExpenseError(null)
       setYearlyCategoryExpenseError(null)
 
       try {
-        // Fetch yearly category expenses from API using yearly date range
-        const yearlyCategoryData = await getApiCategoryExpenses(
-          currentYearlyDateRange.startDate,
-          currentYearlyDateRange.endDate,
-          userCurrency
-        );
+        const startYear = currentYearlyDateRange.startDate.getFullYear()
+        const startMonth = currentYearlyDateRange.startDate.getMonth() + 1
+        const endYear = currentYearlyDateRange.endDate.getFullYear()
+        const endMonth = currentYearlyDateRange.endDate.getMonth() + 1
+
+        // Single API call for the yearly date range
+        const response = await getMonthlyCategorySummaries(startYear, startMonth, endYear, endMonth)
+
+        // Derive all three datasets from the same response
+        const monthlyForYearly = transformMonthlyCategorySummaries(response, userCurrency)
+        const yearlyData = calculateYearlyExpensesFromMonthly(monthlyForYearly)
+        const yearlyCategoryData = calculateCategoryExpensesFromNewApi(response, userCurrency)
+        const yearlyGroupedData = transformMonthlyCategorySummariesToYearlyGroupedData(response, userCurrency)
+
+        setYearlyExpenses(yearlyData)
         setYearlyCategoryExpenses(yearlyCategoryData)
+        setYearlyGroupedCategoryExpenses(yearlyGroupedData)
 
       } catch (error) {
-        console.error('Failed to load yearly category expense data:', error)
-        setYearlyCategoryExpenseError(error instanceof Error ? error.message : 'Failed to load yearly category expense data')
+        console.error('Failed to load yearly range data:', error)
+        const msg = error instanceof Error ? error.message : 'Failed to load yearly data'
+        setYearlyExpenseError(msg)
+        setYearlyCategoryExpenseError(msg)
       } finally {
+        setIsLoadingYearlyExpenses(false)
         setIsLoadingYearlyCategoryExpenses(false)
       }
     }
 
-    const loadYearlyGroupedCategoryExpenseData = async () => {
-      setIsLoadingYearlyGroupedCategoryExpenses(true)
-      setYearlyGroupedCategoryExpenseError(null)
-
-      try {
-        // Fetch yearly grouped category expenses from API
-        const yearlyGroupedCategoryData = await getApiYearlyCategoryExpenses(
-          currentYearlyDateRange.startDate,
-          currentYearlyDateRange.endDate,
-          userCurrency
-        );
-        setYearlyGroupedCategoryExpenses(yearlyGroupedCategoryData)
-
-      } catch (error) {
-        console.error('Failed to load yearly grouped category expense data:', error)
-        setYearlyGroupedCategoryExpenseError(error instanceof Error ? error.message : 'Failed to load yearly grouped category expense data')
-      } finally {
-        setIsLoadingYearlyGroupedCategoryExpenses(false)
-      }
-    }
-
-    loadYearlyCategoryExpenseData()
-    loadYearlyGroupedCategoryExpenseData()
+    loadYearlyRangeData()
   }, [currentYearlyDateRange, userCurrency])
 
   return (

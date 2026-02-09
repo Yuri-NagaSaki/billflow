@@ -37,11 +37,11 @@ interface SettingsState {
   setCurrency: (currency: CurrencyType) => Promise<void>
   theme: ThemeType
   setTheme: (theme: ThemeType) => Promise<void>
-  
+
   // Currency display settings
   showOriginalCurrency: boolean
   setShowOriginalCurrency: (show: boolean) => void
-  
+
   // Exchange rate settings
   exchangeRates: Record<string, number>
   updateExchangeRate: (currency: string, rate: number) => void
@@ -49,16 +49,19 @@ interface SettingsState {
   updateLastExchangeRateUpdate: () => void
   fetchExchangeRates: () => Promise<void>
   updateExchangeRatesFromApi: () => Promise<void>
-  
+
   // Exchange rate configuration status
   exchangeRateConfigStatus: ExchangeRateConfigStatus | null
   fetchExchangeRateConfigStatus: () => Promise<void>
-  
+
   // Data management
   resetSettings: () => void
-  fetchSettings: () => Promise<void>
+  fetchSettings: (options?: { force?: boolean }) => Promise<void>
   isLoading: boolean
   error: string | null
+
+  // Freshness tracking
+  lastFetchedAt: number | null
 }
 
 export const initialSettings = {
@@ -71,7 +74,8 @@ export const initialSettings = {
   lastExchangeRateUpdate: null,
   exchangeRateConfigStatus: null,
   isLoading: false,
-  error: null
+  error: null,
+  lastFetchedAt: null as number | null,
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -79,7 +83,13 @@ export const useSettingsStore = create<SettingsState>()(
     (set, get) => ({
       ...initialSettings,
       
-      fetchSettings: async () => {
+      fetchSettings: async (options) => {
+        const FRESHNESS_TTL = 60_000
+        const { lastFetchedAt } = get()
+        if (!options?.force && lastFetchedAt && Date.now() - lastFetchedAt < FRESHNESS_TTL) {
+          return
+        }
+
         set({ isLoading: true, error: null })
         try {
           const loadedSettings = await apiClient.get<SettingsApiResponse>('/settings')
@@ -91,7 +101,7 @@ export const useSettingsStore = create<SettingsState>()(
               : initialSettings.showOriginalCurrency,
           }
 
-          set({ ...settings, isLoading: false })
+          set({ ...settings, isLoading: false, lastFetchedAt: Date.now() })
           // Don't apply theme here - let next-themes handle it
 
           // 获取汇率数据和配置状态

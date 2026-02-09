@@ -1,3 +1,4 @@
+import { memo } from "react"
 import {
   Card,
   CardContent,
@@ -19,7 +20,7 @@ interface StatCardProps {
   }
 }
 
-export function StatCard({ title, value, description, icon: Icon, iconColor, trend }: StatCardProps) {
+export const StatCard = memo(function StatCard({ title, value, description, icon: Icon, iconColor, trend }: StatCardProps) {
   return (
     <Card className="flex flex-col">
       <CardHeader className="flex flex-row items-center justify-between pb-2 flex-shrink-0">
@@ -49,4 +50,4 @@ export function StatCard({ title, value, description, icon: Icon, iconColor, tre
       </CardContent>
     </Card>
   )
-}
+})

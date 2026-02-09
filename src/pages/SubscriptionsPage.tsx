@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { useTranslation } from "react-i18next"
-import { 
-  Calendar, 
-  Plus, 
-  Search, 
+import {
+  Calendar,
+  Plus,
+  Search,
   Tags,
   Check,
   Download,
@@ -41,9 +41,9 @@ import {
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { useConfirmation } from "@/hooks/use-confirmation"
 
-import { 
-  useSubscriptionStore, 
-  Subscription, 
+import {
+  useSubscriptionStore,
+  Subscription,
   SubscriptionStatus,
   BillingCycle
 } from "@/store/subscriptionStore"
@@ -72,7 +72,7 @@ export function SubscriptionsPage() {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc")
 
   const { fetchSettings } = useSettingsStore()
-  
+
   const {
     subscriptions,
     categories,
@@ -97,64 +97,66 @@ export function SubscriptionsPage() {
   useEffect(() => {
     initialize()
   }, [initialize])
-  
-  // Get categories actually in use
-  const usedCategories = getUniqueCategories()
-  
-  // Get unique billing cycles in use
-  const getUniqueBillingCycles = () => {
+
+  // Get categories actually in use (memoized)
+  const usedCategories = useMemo(() => getUniqueCategories(), [subscriptions, categories])
+
+  // Get unique billing cycles in use (memoized)
+  const usedBillingCycles = useMemo(() => {
     const billingCycles = subscriptions.map(sub => sub.billingCycle)
     return Array.from(new Set(billingCycles)).map(cycle => ({
       value: cycle,
       label: cycle.charAt(0).toUpperCase() + cycle.slice(1)
     }))
-  }
-  
-  const usedBillingCycles = getUniqueBillingCycles()
+  }, [subscriptions])
 
-  // Filter subscriptions based on search term, current view, selected categories and billing cycles
-  const filteredSubscriptions = subscriptions.filter(sub => {
-    const matchesSearch = sub.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        sub.plan.toLowerCase().includes(searchTerm.toLowerCase())
-    
-    const matchesStatus = 
-      currentView === "all" || 
-      (currentView === "active" && sub.status === "active") ||
-      (currentView === "trial" && sub.status === "trial") ||
-      (currentView === "cancelled" && sub.status === "cancelled")
-    
-    const matchesCategory =
-      selectedCategories.length === 0 ||
-      selectedCategories.some(categoryValue => {
-        const category = categories.find(cat => cat.value === categoryValue)
-        return category && sub.categoryId === category.id
-      })
-      
-    const matchesBillingCycle =
-      selectedBillingCycles.length === 0 ||
-      selectedBillingCycles.includes(sub.billingCycle)
-    
-    return matchesSearch && matchesStatus && matchesCategory && matchesBillingCycle
-  })
+  // Filter subscriptions based on search term, current view, selected categories and billing cycles (memoized)
+  const filteredSubscriptions = useMemo(() => {
+    return subscriptions.filter(sub => {
+      const matchesSearch = sub.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          sub.plan.toLowerCase().includes(searchTerm.toLowerCase())
+
+      const matchesStatus =
+        currentView === "all" ||
+        (currentView === "active" && sub.status === "active") ||
+        (currentView === "trial" && sub.status === "trial") ||
+        (currentView === "cancelled" && sub.status === "cancelled")
+
+      const matchesCategory =
+        selectedCategories.length === 0 ||
+        selectedCategories.some(categoryValue => {
+          const category = categories.find(cat => cat.value === categoryValue)
+          return category && sub.categoryId === category.id
+        })
+
+      const matchesBillingCycle =
+        selectedBillingCycles.length === 0 ||
+        selectedBillingCycles.includes(sub.billingCycle)
+
+      return matchesSearch && matchesStatus && matchesCategory && matchesBillingCycle
+    })
+  }, [subscriptions, searchTerm, currentView, selectedCategories, selectedBillingCycles, categories])
 
   // 将乐观更新应用到筛选后的订阅列表
   const optimisticFiltered = useOptimisticSubscriptions(filteredSubscriptions)
 
-  const sortedSubscriptions = [...optimisticFiltered].sort((a, b) => {
-    const dateA = new Date(a.nextBillingDate).getTime()
-    const dateB = new Date(b.nextBillingDate).getTime()
+  const sortedSubscriptions = useMemo(() => {
+    return [...optimisticFiltered].sort((a, b) => {
+      const dateA = new Date(a.nextBillingDate).getTime()
+      const dateB = new Date(b.nextBillingDate).getTime()
 
-    if (sortOrder === "asc") {
-      return dateA - dateB
-    } else {
-      return dateB - dateA
-    }
-  })
+      if (sortOrder === "asc") {
+        return dateA - dateB
+      } else {
+        return dateB - dateA
+      }
+    })
+  }, [optimisticFiltered, sortOrder])
 
   // Handler for adding new subscription
   const handleAddSubscription = async (subscription: Omit<Subscription, "id" | "lastBillingDate">) => {
     const { error } = await addSubscription(subscription)
-    
+
     if (error) {
       toast({
         title: t('subscription:errorAdd'),
@@ -163,7 +165,7 @@ export function SubscriptionsPage() {
       })
       return
     }
-    
+
     toast({
       title: t('subscription:added'),
       description: `${subscription.name} ${t('subscription:addedSuccess')}`
@@ -197,13 +199,13 @@ export function SubscriptionsPage() {
 
   // State for delete confirmation
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null)
-  
+
   // Handler for deleting subscription
   const handleDeleteSubscription = async () => {
     if (!deleteTarget) return
-    
+
     const { error } = await deleteSubscription(deleteTarget.id)
-    
+
     if (error) {
       toast({
         title: t('subscription:errorDelete'),
@@ -218,10 +220,10 @@ export function SubscriptionsPage() {
       description: `${deleteTarget.name} ${t('subscription:deleteSuccess')}`,
       variant: "destructive"
     })
-    
+
     setDeleteTarget(null)
   }
-  
+
   // Confirmation dialog hook
   const deleteConfirmation = useConfirmation({
     title: t('subscription:delete'),
@@ -229,18 +231,26 @@ export function SubscriptionsPage() {
     confirmText: t('common:delete'),
     onConfirm: handleDeleteSubscription,
   })
-  
-  // Handler to open delete confirmation
-  const handleDeleteClick = (id: number) => {
+
+  // Stable callback for edit click
+  const handleEditClick = useCallback((id: number) => {
+    const subscription = subscriptions.find(s => s.id === id)
+    if (subscription) {
+      setEditingSubscription(subscription)
+    }
+  }, [subscriptions])
+
+  // Stable callback for delete click
+  const handleDeleteClick = useCallback((id: number) => {
     const subscription = subscriptions.find(sub => sub.id === id)
     if (!subscription) return
-    
+
     setDeleteTarget({ id, name: subscription.name })
     deleteConfirmation.openDialog()
-  }
+  }, [subscriptions, deleteConfirmation])
 
   // Handler for changing subscription status
-  const handleStatusChange = async (id: number, status: SubscriptionStatus) => {
+  const handleStatusChange = useCallback(async (id: number, status: SubscriptionStatus) => {
     const subscription = subscriptions.find(sub => sub.id === id)
     if (!subscription) return
 
@@ -255,12 +265,12 @@ export function SubscriptionsPage() {
       return
     }
 
-  
+
     toast({
       title: t('subscription:statusUpdated'),
       description: `${subscription.name} ${t('subscription:statusUpdateSuccess')}`
     })
-  }
+  }, [subscriptions, updateSubscription, toast, t])
 
   // Handler for manual renewal
   const handleManualRenew = async (id: number) => {
@@ -284,7 +294,7 @@ export function SubscriptionsPage() {
 
     toast({
       title: t('subscription:renewed'),
-      description: t(`${subscription.name} has been renewed. 
+      description: t(`${subscription.name} has been renewed.
         Next billing date: ${newBillingDate}`)
     })
   }
@@ -299,7 +309,7 @@ export function SubscriptionsPage() {
       }
     })
   }
-  
+
   // Handler for toggling a billing cycle in the filter
   const toggleBillingCycleFilter = (billingCycle: BillingCycle) => {
     setSelectedBillingCycles(prev => {
@@ -326,7 +336,7 @@ export function SubscriptionsPage() {
         title: t('subscription:importSuccess'),
         description: t('subscription:subscriptionsImported', { count: newSubscriptions.length }),
       });
-      
+
       // Close the modal after successful import
       setShowImportModal(false);
     }
@@ -339,7 +349,7 @@ export function SubscriptionsPage() {
   const handleExportSubscriptions = () => {
     // Generate JSON data
     const jsonData = exportSubscriptionsToJSON(subscriptions)
-    
+
     // Create a blob and download link
     const blob = new Blob([jsonData], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
@@ -350,13 +360,13 @@ export function SubscriptionsPage() {
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
-    
+
     toast({
       title: t('subscription:exportSuccess'),
       description: t('subscription:exportToJson')
     })
   }
-  
+
   // Get billing cycle badge variant
   const getBillingCycleBadgeVariant = (billingCycle: BillingCycle) => {
     switch (billingCycle) {
@@ -373,7 +383,13 @@ export function SubscriptionsPage() {
     }
   }
 
-  if (isLoading) {
+  // Stable callback for viewing details
+  const handleViewDetails = useCallback((subscription: Subscription) => {
+    setDetailSubscription(subscription)
+  }, [])
+
+  // Only show full-screen spinner on first load with no data
+  if (subscriptions.length === 0 && isLoading) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-16rem)]">
         <div className="text-center">
@@ -688,36 +704,7 @@ export function SubscriptionsPage() {
       )}
 
       {/* Subscriptions Grid */}
-      {isLoading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {/* Loading skeleton cards */}
-          {Array.from({ length: 6 }).map((_, index) => (
-            <div key={index} className="rounded-xl border bg-card shadow animate-pulse">
-              <div className="p-6 pb-2">
-                <div className="flex justify-between items-start mb-2">
-                  <div className="space-y-2">
-                    <div className="h-5 bg-muted rounded w-24"></div>
-                    <div className="h-4 bg-muted rounded w-16"></div>
-                  </div>
-                  <div className="h-6 bg-muted rounded w-16"></div>
-                </div>
-              </div>
-              <div className="px-6 pb-6 space-y-3">
-                <div className="flex justify-between items-center">
-                  <div className="h-6 bg-muted rounded w-20"></div>
-                  <div className="h-5 bg-muted rounded w-16"></div>
-                </div>
-                <div className="space-y-2">
-                  <div className="h-4 bg-muted rounded w-32"></div>
-                  <div className="h-4 bg-muted rounded w-40"></div>
-                  <div className="h-4 bg-muted rounded w-28"></div>
-                  <div className="h-4 bg-muted rounded w-36"></div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : sortedSubscriptions.length === 0 ? (
+      {sortedSubscriptions.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <Calendar className="h-12 w-12 text-muted-foreground opacity-50 mb-4" />
           <h3 className="text-lg font-medium mb-1">{t('subscription:noSubscriptionsFound')}</h3>
@@ -746,10 +733,10 @@ export function SubscriptionsPage() {
             <SubscriptionCard
               key={subscription.id}
               subscription={subscription}
-              onEdit={() => setEditingSubscription(subscription)}
+              onEdit={() => handleEditClick(subscription.id)}
               onDelete={() => handleDeleteClick(subscription.id)}
               onStatusChange={handleStatusChange}
-              onViewDetails={(subscription) => setDetailSubscription(subscription)}
+              onViewDetails={handleViewDetails}
             />
           ))}
         </div>
