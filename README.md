@@ -36,7 +36,7 @@ A modern subscription management system rebuilt for **Cloudflare Workers**. It p
 Template deploy notes:
 - You must create a D1 database, set the `database_id` in `wrangler.toml`, and apply migrations. Without migrations, login will fail.
 - If you did not set `ADMIN_PASSWORD`, the default login is `admin` / `admin` (change it in Settings after login).
-- Automatic exchange rate updates require `EXCHANGE_RATE_API_KEY` (ExchangeRate-API). Without it, rates will not auto-update.
+- Telegram Bot Token and ExchangeRate-API key can be configured in the Settings UI and stored in D1. Environment variables are optional.
 
 1. Create a D1 database:
    ```bash
@@ -53,11 +53,9 @@ Template deploy notes:
    wrangler d1 migrations apply billflow
    ```
 
-4. Configure secrets:
+4. Configure secrets (optional):
    ```bash
    wrangler secret put ADMIN_PASSWORD
-   wrangler secret put TELEGRAM_BOT_TOKEN
-   wrangler secret put EXCHANGE_RATE_API_KEY
    ```
 
 5. Build and deploy:
@@ -66,6 +64,21 @@ Template deploy notes:
    pnpm run build
    wrangler deploy
    ```
+
+## GitHub Actions Deploy (Fork)
+
+1. Fork this repository.
+2. Create a D1 database and note the **name** + **ID**.
+3. In your fork, add GitHub Secrets:
+   - `CLOUDFLARE_API_TOKEN`
+   - `CLOUDFLARE_ACCOUNT_ID`
+   - `D1_DATABASE_ID`
+   - `D1_DATABASE_NAME`
+   - `ADMIN_PASSWORD`
+   - `WORKER_NAME` (optional)
+4. Push to `main` or run the workflow manually.
+
+The workflow auto-applies D1 migrations and deploys the Worker.
 
 ## Local Development
 
@@ -100,8 +113,8 @@ Worker API: http://127.0.0.1:8787/api
 - `SESSION_COOKIE_SECURE` (optional, `true`/`false`/`auto`)
 - `SESSION_COOKIE_SAMESITE` (optional, `lax`/`strict`/`none`)
 - `BASE_CURRENCY` (optional, default `CNY`)
-- `TELEGRAM_BOT_TOKEN` (optional, for notifications)
-- `EXCHANGE_RATE_API_KEY` (optional, for FX updates)
+- `TELEGRAM_BOT_TOKEN` (optional, can also be set in Settings UI)
+- `EXCHANGE_RATE_API_KEY` (optional, can also be set in Settings UI)
 
 ## Tests
 

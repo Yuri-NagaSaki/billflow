@@ -36,7 +36,7 @@
 模板部署注意事项：
 - 需要先创建 D1 数据库，填写 `wrangler.toml` 里的 `database_id`，并执行迁移；否则无法登录。
 - 若未设置 `ADMIN_PASSWORD`，默认账号/密码为 `admin` / `admin`（登录后请在设置中修改）。
-- 自动汇率更新需要 `EXCHANGE_RATE_API_KEY`（ExchangeRate-API），未配置则不会自动更新。
+- Telegram Bot Token 与 ExchangeRate-API Key 可在设置页面填写并存入 D1；环境变量可选。
 
 1. 创建 D1 数据库：
    ```bash
@@ -53,11 +53,9 @@
    wrangler d1 migrations apply billflow
    ```
 
-4. 配置密钥：
+4. 配置密钥（可选）：
    ```bash
    wrangler secret put ADMIN_PASSWORD
-   wrangler secret put TELEGRAM_BOT_TOKEN
-   wrangler secret put EXCHANGE_RATE_API_KEY
    ```
 
 5. 构建并部署：
@@ -66,6 +64,21 @@
    pnpm run build
    wrangler deploy
    ```
+
+## GitHub Actions 部署（Fork）
+
+1. Fork 本仓库。
+2. 创建 D1 数据库，记录 **name** 与 **ID**。
+3. 在你的 fork 仓库里添加 GitHub Secrets：
+   - `CLOUDFLARE_API_TOKEN`
+   - `CLOUDFLARE_ACCOUNT_ID`
+   - `D1_DATABASE_ID`
+   - `D1_DATABASE_NAME`
+   - `ADMIN_PASSWORD`
+   - `WORKER_NAME`（可选）
+4. 推送到 `main` 或手动触发工作流。
+
+该工作流会自动执行 D1 迁移并部署 Worker。
 
 ## 本地开发
 
@@ -100,8 +113,8 @@ Worker API：http://127.0.0.1:8787/api
 - `SESSION_COOKIE_SECURE`（可选，`true`/`false`/`auto`）
 - `SESSION_COOKIE_SAMESITE`（可选，`lax`/`strict`/`none`）
 - `BASE_CURRENCY`（可选，默认 `CNY`）
-- `TELEGRAM_BOT_TOKEN`（可选，用于通知）
-- `EXCHANGE_RATE_API_KEY`（可选，用于汇率更新）
+- `TELEGRAM_BOT_TOKEN`（可选，也可在设置页面填写）
+- `EXCHANGE_RATE_API_KEY`（可选，也可在设置页面填写）
 
 ## 测试
 
