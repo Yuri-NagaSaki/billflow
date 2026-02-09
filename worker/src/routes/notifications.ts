@@ -3,9 +3,10 @@ import type { HonoEnv } from '../types';
 import { NotificationService } from '../services/notificationService';
 import { TelegramService } from '../services/telegramService';
 import { createValidator, validateChannelConfig, validateSendNotification } from '../utils/validator';
-import { handleQueryResult, validationError, error as errorResponse } from '../utils/response';
+import { handleQueryResult, validationError, error as errorResponse, success } from '../utils/response';
 import { requireLogin } from '../middleware/requireLogin';
 import { dbAll, dbFirst, dbRun } from '../utils/db';
+import { setSecret } from '../services/secretService';
 
 export const notificationRoutes = new Hono<HonoEnv>();
 export const protectedNotificationRoutes = new Hono<HonoEnv>();
@@ -17,7 +18,14 @@ notificationRoutes.get('/history', async (c) => {
   const status = c.req.query('status');
   const type = c.req.query('type');
   const result = await service.getNotificationHistory({ page, limit, status, type });
-  return handleQueryResult(c, result, 'Notification history');
+  return success(c, {
+    data: result.data,
+    pagination: {
+      page: result.page,
+      limit: result.limit,
+      total: result.total
+    }
+  }, 'Notification history');
 });
 
 notificationRoutes.get('/stats', async (c) => {
@@ -122,7 +130,15 @@ protectedNotificationRoutes.post('/channels', async (c) => {
 protectedNotificationRoutes.get('/channels/:channelType', async (c) => {
   const service = new NotificationService(c.env);
   const config = await service.getChannelConfig(c.req.param('channelType'));
-  if (!config) return errorResponse(c, 'Channel configuration not found', 404);
+  if (!config) {
+    return success(c, {
+      channel_type: c.req.param('channelType'),
+      channel_config: '{}',
+      config: {},
+      is_active: 0,
+      last_used_at: null
+    }, 'Channel configuration');
+  }
   return handleQueryResult(c, config, 'Channel configuration');
 });
 
@@ -161,7 +177,14 @@ protectedNotificationRoutes.get('/history', async (c) => {
   const status = c.req.query('status');
   const type = c.req.query('type');
   const result = await service.getNotificationHistory({ page, limit, status, type });
-  return handleQueryResult(c, result, 'Notification history');
+  return success(c, {
+    data: result.data,
+    pagination: {
+      page: result.page,
+      limit: result.limit,
+      total: result.total
+    }
+  }, 'Notification history');
 });
 
 protectedNotificationRoutes.get('/stats', async (c) => {
@@ -182,12 +205,30 @@ protectedNotificationRoutes.post('/validate-chat-id', async (c) => {
 
 protectedNotificationRoutes.get('/telegram/bot-info', async (c) => {
   const telegram = new TelegramService(c.env);
+  const status = await telegram.getConfigStatus();
+  if (!status.configured) {
+    return success(c, { success: false, botInfo: null, error: 'Telegram Bot Token not configured' }, 'Bot info');
+  }
   const result = await telegram.getBotInfo();
-  if (result.success) return handleQueryResult(c, { success: true, botInfo: result.botInfo }, 'Bot info');
-  return errorResponse(c, result.error || 'Failed to get bot info', 400);
+  if (result.success) return success(c, { success: true, botInfo: result.botInfo }, 'Bot info');
+  return success(c, { success: false, botInfo: null, error: result.error || 'Failed to get bot info' }, 'Bot info');
 });
 
 protectedNotificationRoutes.get('/telegram/config-status', async (c) => {
   const telegram = new TelegramService(c.env);
-  return handleQueryResult(c, telegram.getConfigStatus(), 'Telegram config status');
+  const status = await telegram.getConfigStatus();
+  return success(c, status, 'Telegram config status');
+});
+
+protectedNotificationRoutes.post('/telegram/token', async (c) => {
+  const payload = await c.req.json();
+  const token = typeof payload?.bot_token === 'string' ? payload.bot_token.trim() : '';
+
+  if (!token) {
+    await setSecret(c.env, 'telegram_bot_token', '');
+    return success(c, { configured: false }, 'Telegram Bot Token cleared');
+  }
+
+  await setSecret(c.env, 'telegram_bot_token', token);
+  return success(c, { configured: true }, 'Telegram Bot Token updated');
 });

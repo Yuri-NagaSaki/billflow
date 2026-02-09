@@ -62,6 +62,7 @@ export interface TelegramConfigStatus {
   configured: boolean;
   hasToken: boolean;
   isPlaceholder: boolean;
+  source?: string;
 }
 
 export const notificationApi = {
@@ -144,5 +145,9 @@ export const notificationApi = {
 
   // 获取Telegram配置状态
   getTelegramConfigStatus: () =>
-    apiClient.get<TelegramConfigStatus>(`/protected/notifications/telegram/config-status`)
+    apiClient.get<TelegramConfigStatus>(`/protected/notifications/telegram/config-status`),
+
+  // 设置Telegram Bot Token
+  setTelegramBotToken: (botToken: string) =>
+    apiClient.post<{ configured: boolean }>(`/protected/notifications/telegram/token`, { bot_token: botToken })
 };

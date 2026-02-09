@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
@@ -11,6 +12,8 @@ import { type CurrencyType, isBaseCurrency } from '@/config/currency';
 import { formatCurrencyAmount } from '@/utils/currency';
 import { logger } from '@/utils/logger';
 import { CURRENCY_NAMES } from '@/config/constants';
+import { ExchangeRateApi } from '@/services/exchangeRateApi';
+import { useToast } from '@/hooks/use-toast';
 
 export function ExchangeRateManager() {
   const { t } = useTranslation('settings');
@@ -20,6 +23,7 @@ export function ExchangeRateManager() {
     exchangeRateConfigStatus,
     fetchExchangeRates,
     updateExchangeRatesFromApi,
+    fetchExchangeRateConfigStatus,
     currency,
     setCurrency,
     showOriginalCurrency,
@@ -27,6 +31,9 @@ export function ExchangeRateManager() {
   } = useSettingsStore();
   
   const [isUpdating, setIsUpdating] = useState(false);
+  const [apiKey, setApiKey] = useState('');
+  const [savingKey, setSavingKey] = useState(false);
+  const { toast } = useToast();
 
   // 手动更新汇率
   const handleUpdateRates = async () => {
@@ -55,6 +62,37 @@ export function ExchangeRateManager() {
       return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
     } else {
       return t('justNow');
+    }
+  };
+
+  const handleSaveApiKey = async () => {
+    if (!apiKey.trim()) {
+      toast({
+        title: t('apiKeySaveFailed'),
+        description: t('apiKeyRequired'),
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    try {
+      setSavingKey(true);
+      await ExchangeRateApi.setApiKey(apiKey.trim());
+      setApiKey('');
+      await fetchExchangeRateConfigStatus();
+      toast({
+        title: t('apiKeySaved'),
+        description: t('apiKeySaved')
+      });
+    } catch (error) {
+      logger.error('Failed to save exchange rate API key:', error);
+      toast({
+        title: t('apiKeySaveFailed'),
+        description: t('apiKeySaveFailed'),
+        variant: 'destructive'
+      });
+    } finally {
+      setSavingKey(false);
     }
   };
 
@@ -124,6 +162,30 @@ export function ExchangeRateManager() {
           </CardHeader>
           <CardContent className="flex flex-col flex-1">
             <div className="space-y-4 flex-1">
+              <div className="space-y-2">
+                <p className="text-sm font-medium">{t('apiKey')}</p>
+                <div className="flex gap-2">
+                  <Input
+                    type="password"
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    placeholder={t('apiKeyPlaceholder')}
+                  />
+                  <Button
+                    size="sm"
+                    onClick={handleSaveApiKey}
+                    disabled={savingKey || !apiKey.trim()}
+                  >
+                    {savingKey ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <CheckCircle className="h-4 w-4" />
+                    )}
+                    {t('saveApiKey')}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">{t('apiKeyDesc')}</p>
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <p className="text-sm font-medium">{t('apiProvider')}</p>

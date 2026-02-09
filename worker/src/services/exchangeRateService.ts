@@ -1,6 +1,7 @@
 import type { Env } from '../types';
 import { getBaseCurrency, getSupportedCurrencyCodes } from '../config/currencies';
 import { dbBatch } from '../utils/db';
+import { getSecret } from './secretService';
 
 interface ExchangeRateApiResponse {
   result: string;
@@ -9,7 +10,7 @@ interface ExchangeRateApiResponse {
 }
 
 export async function getAllExchangeRates(env: Env) {
-  const apiKey = env.EXCHANGE_RATE_API_KEY;
+  const apiKey = (await getSecret(env, 'exchange_rate_api_key')) || env.EXCHANGE_RATE_API_KEY;
   if (!apiKey) {
     return [] as Array<{ from_currency: string; to_currency: string; rate: number }>;
   }

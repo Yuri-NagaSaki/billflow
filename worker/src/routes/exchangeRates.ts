@@ -5,6 +5,7 @@ import { dbAll, dbFirst, dbRun, normalizeResult } from '../utils/db';
 import { handleDbResult, handleQueryResult, validationError, error as errorResponse } from '../utils/response';
 import { requireLogin } from '../middleware/requireLogin';
 import { updateExchangeRates } from '../services/exchangeRateService';
+import { getSecret, setSecret } from '../services/secretService';
 
 async function getExchangeRate(env: HonoEnv['Bindings'], fromCurrency: string, toCurrency: string) {
   if (fromCurrency === toCurrency) return 1.0;
@@ -83,11 +84,16 @@ exchangeRateRoutes.get('/stats', async (c) => {
 });
 
 exchangeRateRoutes.get('/config-status', async (c) => {
+  const storedKey = await getSecret(c.env, 'exchange_rate_api_key');
+  const envKey = c.env.EXCHANGE_RATE_API_KEY;
+  const configured = !!(storedKey || envKey);
+  const source = storedKey ? 'database' : envKey ? 'env' : 'none';
   return c.json({
-    exchangeRateApiConfigured: !!c.env.EXCHANGE_RATE_API_KEY,
+    exchangeRateApiConfigured: configured,
     provider: 'ExchangeRate-API',
     updateFrequency: 'Daily (Automatic)',
-    baseCurrency: getBaseCurrency(c.env)
+    baseCurrency: getBaseCurrency(c.env),
+    source
   });
 });
 
@@ -156,6 +162,19 @@ protectedExchangeRateRoutes.post('/validate', async (c) => {
   }
   if (errors.length) return validationError(c, errors);
   return c.json({ message: 'Exchange rate data is valid' });
+});
+
+protectedExchangeRateRoutes.post('/api-key', async (c) => {
+  const payload = await c.req.json();
+  const apiKey = typeof payload?.api_key === 'string' ? payload.api_key.trim() : '';
+
+  if (!apiKey) {
+    await setSecret(c.env, 'exchange_rate_api_key', '');
+    return c.json({ message: 'Exchange rate API key cleared', configured: false });
+  }
+
+  await setSecret(c.env, 'exchange_rate_api_key', apiKey);
+  return c.json({ message: 'Exchange rate API key updated', configured: true });
 });
 
 protectedExchangeRateRoutes.post('/update', async (c) => {

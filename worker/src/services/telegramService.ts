@@ -1,34 +1,41 @@
 import type { Env } from '../types';
+import { getSecret } from './secretService';
+
+const PLACEHOLDER_TOKEN = 'your_telegram_bot_token_here';
 
 export class TelegramService {
-  private botToken: string | undefined;
-  private apiBaseUrl: string | null = null;
+  constructor(private env: Env) {}
 
-  constructor(private env: Env) {
-    this.botToken = env.TELEGRAM_BOT_TOKEN;
-    if (this.botToken) {
-      this.apiBaseUrl = `https://api.telegram.org/bot${this.botToken}`;
-    }
+  private async resolveToken() {
+    const stored = await getSecret(this.env, 'telegram_bot_token');
+    const token = stored || this.env.TELEGRAM_BOT_TOKEN || '';
+    const source = stored ? 'database' : this.env.TELEGRAM_BOT_TOKEN ? 'env' : 'none';
+    return { token, source };
   }
 
-  isConfigured() {
-    return !!this.botToken && this.botToken !== 'your_telegram_bot_token_here';
+  async isConfigured() {
+    const { token } = await this.resolveToken();
+    return !!token && token !== PLACEHOLDER_TOKEN;
   }
 
-  getConfigStatus() {
+  async getConfigStatus() {
+    const { token, source } = await this.resolveToken();
+    const isPlaceholder = token === PLACEHOLDER_TOKEN || !token;
     return {
-      configured: this.isConfigured(),
-      hasToken: !!this.botToken,
-      isPlaceholder: this.botToken === 'your_telegram_bot_token_here' || !this.botToken
+      configured: !!token && !isPlaceholder,
+      hasToken: !!token,
+      isPlaceholder,
+      source
     };
   }
 
   private async request(path: string, payload?: unknown) {
-    if (!this.apiBaseUrl) {
+    const { token } = await this.resolveToken();
+    if (!token || token === PLACEHOLDER_TOKEN) {
       throw new Error('Telegram Bot Token not configured');
     }
 
-    const url = `${this.apiBaseUrl}/${path}`;
+    const url = `https://api.telegram.org/bot${token}/${path}`;
     const options: RequestInit = payload
       ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }
       : { method: 'GET' };

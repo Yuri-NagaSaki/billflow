@@ -70,12 +70,14 @@ export const TelegramConfig: React.FC<TelegramConfigProps> = ({ userId, onConfig
   const [loading, setLoading] = useState(false);
   const [testing, setTesting] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savingToken, setSavingToken] = useState(false);
   const [validating, setValidating] = useState(false);
   const [chatIdValid, setChatIdValid] = useState<boolean | null>(
     channelConfigs.telegram?.validated ?? null
   );
   const [botConfig, setBotConfig] = useState<BotConfig | null>(null);
   const [botInfo, setBotInfo] = useState<BotInfo | null>(null);
+  const [botTokenInput, setBotTokenInput] = useState('');
 
   const loadConfig = useCallback(async () => {
     try {
@@ -209,6 +211,37 @@ export const TelegramConfig: React.FC<TelegramConfigProps> = ({ userId, onConfig
     }
   };
 
+  const handleSaveToken = async () => {
+    if (!botTokenInput.trim()) {
+      toast({
+        title: t('errors.telegramNotConfigured'),
+        description: t('botTokenHelp'),
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    try {
+      setSavingToken(true);
+      await notificationApi.setTelegramBotToken(botTokenInput.trim());
+      setBotTokenInput('');
+      await loadBotInfo();
+      toast({
+        title: t('tokenSaved'),
+        description: t('tokenSaved')
+      });
+    } catch (error) {
+      console.error('Failed to save Telegram bot token:', error);
+      toast({
+        title: t('tokenSaveFailed'),
+        description: t('tokenSaveFailed'),
+        variant: 'destructive'
+      });
+    } finally {
+      setSavingToken(false);
+    }
+  };
+
   const handleTest = async () => {
     if (!config.chat_id.trim()) {
       toast({
@@ -290,6 +323,33 @@ export const TelegramConfig: React.FC<TelegramConfigProps> = ({ userId, onConfig
             </AlertDescription>
           </Alert>
         )}
+
+        {/* Bot Token Input */}
+        <div className="space-y-2">
+          <Label htmlFor="bot-token">{t('botToken')}</Label>
+          <div className="flex gap-2">
+            <Input
+              id="bot-token"
+              type="password"
+              value={botTokenInput}
+              onChange={(e) => setBotTokenInput(e.target.value)}
+              placeholder="123456:ABCDEF..."
+              disabled={savingToken || loading}
+            />
+            <Button
+              onClick={handleSaveToken}
+              disabled={savingToken || loading || !botTokenInput.trim()}
+            >
+              {savingToken ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              {t('saveToken')}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">{t('botTokenHelp')}</p>
+        </div>
 
         {/* Chat ID Input */}
         <div className="space-y-2">

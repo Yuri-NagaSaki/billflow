@@ -129,12 +129,18 @@ export const NotificationHistory: React.FC = () => {
       // as backend doesn't support these filters yet
       
       const response = await notificationApi.getHistory(params);
-      setHistory(Array.isArray(response.data) ? response.data : []);
+      const data = Array.isArray(response.data) ? response.data : [];
+      const pagination = response.pagination || {
+        page,
+        limit: historyPagination.limit,
+        total: 0
+      };
+      setHistory(data);
       setHistoryPagination(prev => ({
         ...prev,
-        page: response.pagination.page,
-        total: response.pagination.total,
-        totalPages: Math.ceil(response.pagination.total / response.pagination.limit)
+        page: pagination.page || page,
+        total: pagination.total || 0,
+        totalPages: Math.ceil((pagination.total || 0) / (pagination.limit || prev.limit))
       }));
     } catch (error) {
       console.error('Failed to load notification history:', error);

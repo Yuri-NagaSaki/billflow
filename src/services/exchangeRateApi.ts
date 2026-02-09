@@ -22,6 +22,7 @@ export interface ExchangeRateConfigStatus {
   provider: string;
   updateFrequency: string;
   baseCurrency?: string;
+  source?: string;
 }
 
 /**
@@ -84,6 +85,20 @@ export class ExchangeRateApi {
       return await apiClient.get<ExchangeRateConfigStatus>('/exchange-rates/config-status');
     } catch (error) {
       logger.error('Error fetching config status:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 设置汇率 API Key
+   */
+  static async setApiKey(apiKey: string): Promise<{ configured: boolean }> {
+    try {
+      return await apiClient.post<{ configured: boolean }>('/protected/exchange-rates/api-key', {
+        api_key: apiKey
+      });
+    } catch (error) {
+      logger.error('Error saving exchange rate API key:', error);
       throw error;
     }
   }
