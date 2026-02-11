@@ -2,18 +2,56 @@
 
 [English](README.md)
 
-一个基于 **Cloudflare Workers** 重构的订阅管理系统。提供完整的 React 控制台、D1 数据存储、Telegram 通知与汇率自动更新能力。
+一个基于 **Cloudflare Workers** 重构优化的订阅管理系统，原始项目来自 [@huhusmang](https://github.com/huhusmang) 的 [Subscription-Management](https://github.com/huhusmang/Subscription-Management)。本项目在其基础上进行了 Cloudflare Workers + D1 架构重构，提供完整的 React 控制台、D1 数据存储、Telegram 通知与汇率自动更新能力。
 
 [![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/Yuri-NagaSaki/billflow)
 
+## 界面预览
+
+### 仪表盘 - 智能费用概览
+![Dashboard](docs/images/dashboard.png)
+*智能仪表盘，展示月/年费用统计、即将到期的订阅提醒及分类费用分析*
+
+### 订阅管理
+![Subscription Management](docs/images/subscriptions.png)
+*完整的订阅生命周期管理，支持添加、编辑、状态管理和批量导入*
+
+### 付款记录
+![Payment History](docs/images/subscriptions-payments.png)
+*完整的付款历史记录，支持搜索与订单增删改查*
+
+### 月度支出 - 趋势分析
+![Monthly Expenses](docs/images/monthly-expense.png)
+*月度支出明细，直观展示消费详情*
+
+### 费用报表 - 深度数据分析
+![Expense Reports](docs/images/reports.png)
+*强大的费用分析功能，包含趋势图表、分类统计和多维度数据展示*
+
+### 深色主题
+![Dark Theme Reports](docs/images/reports-dark.png)
+*全局深色主题支持*
+
 ## 功能特性
 
-- 订阅生命周期管理（自动/手动续费）
-- 费用统计与可视化报表
-- 多币种支持 + ExchangeRate-API 汇率更新
-- Telegram 通知（不含邮件）
-- 多语言（zh-CN、en）
-- Cloudflare Workers + D1 部署
+### 核心功能
+- **订阅管理** — 添加、编辑、删除、追踪订阅服务
+- **智能仪表盘** — 费用概览与即将到期续费提醒
+- **分类与支付统计** — 按分类和支付方式进行费用统计
+- **搜索与筛选** — 多维度搜索与状态筛选
+- **自定义配置** — 自定义分类和支付方式
+
+### 进阶功能
+- **自动续费处理** — 智能检测到期订阅并自动更新
+- **多币种支持** — 9 种货币实时转换（USD、EUR、GBP、CAD、AUD、JPY、CNY、TRY、HKD）
+- **自动汇率更新** — 集成 ExchangeRate-API，通过 Cron Triggers 定时更新
+- **费用分析报表** — 全面的费用分析与可视化图表
+- **付款历史追踪** — 完整的付款记录与历史分析
+- **数据导入/导出** — 支持 CSV 和 JSON 格式
+- **主题切换** — 浅色 / 深色 / 跟随系统
+- **国际化（i18n）** — 中文和英文
+- **Telegram 通知** — 订阅到期与续费提醒
+- **Cloudflare Workers + D1** — Serverless 部署，边缘 SQLite 存储
 
 ## 技术栈
 
@@ -31,40 +69,6 @@
 - Telegram Bot API
 - Cron 定时任务
 
-## 一键部署（Cloudflare Workers）
-
-模板部署注意事项：
-- 需要先创建 D1 数据库，填写 `wrangler.toml` 里的 `database_id`，并执行迁移；否则无法登录。
-- 若未设置 `ADMIN_PASSWORD`，默认账号/密码为 `admin` / `admin`（登录后请在设置中修改）。
-- Telegram Bot Token 与 ExchangeRate-API Key 可在设置页面填写并存入 D1；环境变量可选。
-
-1. 创建 D1 数据库：
-   ```bash
-   wrangler d1 create billflow
-   ```
-
-2. 将返回的 `database_id` 写入 `wrangler.toml`。
-
-3. 数据库迁移：
-   - Worker 会在首次请求时自动执行迁移。
-   - 可选手动执行：
-   ```bash
-   wrangler d1 migrations apply billflow --local
-   wrangler d1 migrations apply billflow
-   ```
-
-4. 配置密钥（可选）：
-   ```bash
-   wrangler secret put ADMIN_PASSWORD
-   ```
-
-5. 构建并部署：
-   ```bash
-   pnpm install
-   pnpm run build
-   wrangler deploy
-   ```
-
 ## GitHub Actions 部署（Fork）
 
 1. Fork 本仓库。
@@ -80,48 +84,9 @@
 
 该工作流会自动执行 D1 迁移并部署 Worker。
 
-## 本地开发
+## 致谢
 
-1. 安装依赖：
-   ```bash
-   pnpm install
-   ```
-
-2. 本地迁移：
-   ```bash
-   wrangler d1 migrations apply billflow --local
-   ```
-
-3. 启动 Workers：
-   ```bash
-   pnpm run dev:worker
-   ```
-
-4. 启动前端（另一个终端）：
-   ```bash
-   pnpm run dev
-   ```
-
-前端地址：http://localhost:5173
-Worker API：http://127.0.0.1:8787/api
-
-## 环境变量
-
-- `ADMIN_USERNAME`（可选，默认 `admin`）
-- `ADMIN_PASSWORD`（初始登录必填）
-- `ADMIN_PASSWORD_HASH`（可选，覆盖 `ADMIN_PASSWORD`）
-- `SESSION_COOKIE_SECURE`（可选，`true`/`false`/`auto`）
-- `SESSION_COOKIE_SAMESITE`（可选，`lax`/`strict`/`none`）
-- `BASE_CURRENCY`（可选，默认 `CNY`）
-- `TELEGRAM_BOT_TOKEN`（可选，也可在设置页面填写）
-- `EXCHANGE_RATE_API_KEY`（可选，也可在设置页面填写）
-
-## 测试
-
-运行 Worker 测试：
-```bash
-pnpm run test
-```
+本项目基于 [@huhusmang](https://github.com/huhusmang) 的 [Subscription-Management](https://github.com/huhusmang/Subscription-Management) 重构而来，感谢原作者的贡献。
 
 ## License
 
