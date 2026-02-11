@@ -10,25 +10,32 @@
 
 ### 仪表盘 - 智能费用概览
 
-<img width="3076" height="1494" alt="image" src="https://github.com/user-attachments/assets/25b51dd7-544d-49e0-bb9f-27d4249fda6c" />
+<img width="3076" height="1494" alt="仪表盘" src="https://github.com/user-attachments/assets/25b51dd7-544d-49e0-bb9f-27d4249fda6c" />
+
 *智能仪表盘，展示月/年费用统计、即将到期的订阅提醒及分类费用分析*
 
 ### 订阅管理
 
-<img width="3122" height="1744" alt="image" src="https://github.com/user-attachments/assets/dba27af0-4b5e-4b92-a9ac-a22233c3f597" />
+<img width="3122" height="1744" alt="订阅管理" src="https://github.com/user-attachments/assets/dba27af0-4b5e-4b92-a9ac-a22233c3f597" />
 
 *完整的订阅生命周期管理，支持添加、编辑、状态管理和批量导入*
 
 ### 付款记录
-<img width="3192" height="1598" alt="image" src="https://github.com/user-attachments/assets/d6e1c4d7-eedf-48a8-9b2f-603bbfe6d66d" />
+
+<img width="3192" height="1598" alt="付款记录" src="https://github.com/user-attachments/assets/d6e1c4d7-eedf-48a8-9b2f-603bbfe6d66d" />
+
 *完整的付款历史记录，支持搜索与订单增删改查*
 
 ### 月度支出 - 趋势分析
-<img width="3128" height="1444" alt="image" src="https://github.com/user-attachments/assets/6b1d21f3-d2c7-424e-937b-a5ee07a4dd29" />
+
+<img width="3128" height="1444" alt="月度支出" src="https://github.com/user-attachments/assets/6b1d21f3-d2c7-424e-937b-a5ee07a4dd29" />
+
 *月度支出明细，直观展示消费详情*
 
 ### 费用报表 - 深度数据分析
-<img width="3070" height="1690" alt="image" src="https://github.com/user-attachments/assets/a61e5637-db34-47bd-83a8-4097e8fa805c" />
+
+<img width="3070" height="1690" alt="费用报表" src="https://github.com/user-attachments/assets/a61e5637-db34-47bd-83a8-4097e8fa805c" />
+
 *强大的费用分析功能，包含趋势图表、分类统计和多维度数据展示*
 
 ## 功能特性

@@ -10,25 +10,32 @@ A modern subscription management system rebuilt for **Cloudflare Workers**, base
 
 ### Dashboard - Smart Expense Overview
 
-<img width="3076" height="1494" alt="image" src="https://github.com/user-attachments/assets/25b51dd7-544d-49e0-bb9f-27d4249fda6c" />
+<img width="3076" height="1494" alt="Dashboard" src="https://github.com/user-attachments/assets/25b51dd7-544d-49e0-bb9f-27d4249fda6c" />
+
 *Smart dashboard displaying monthly/yearly expense statistics, upcoming subscription reminders, and categorized expense analysis*
 
 ### Subscription Management
 
-<img width="3122" height="1744" alt="image" src="https://github.com/user-attachments/assets/dba27af0-4b5e-4b92-a9ac-a22233c3f597" />
+<img width="3122" height="1744" alt="Subscription Management" src="https://github.com/user-attachments/assets/dba27af0-4b5e-4b92-a9ac-a22233c3f597" />
 
 *Complete subscription lifecycle management with support for adding, editing, status management, and batch import*
 
 ### Payment History
-<img width="3192" height="1598" alt="image" src="https://github.com/user-attachments/assets/d6e1c4d7-eedf-48a8-9b2f-603bbfe6d66d" />
+
+<img width="3192" height="1598" alt="Payment History" src="https://github.com/user-attachments/assets/d6e1c4d7-eedf-48a8-9b2f-603bbfe6d66d" />
+
 *Complete payment history records with search support and CRUD operations*
 
 ### Monthly Expenses - Trend Analysis
-<img width="3128" height="1444" alt="image" src="https://github.com/user-attachments/assets/6b1d21f3-d2c7-424e-937b-a5ee07a4dd29" />
+
+<img width="3128" height="1444" alt="Monthly Expenses" src="https://github.com/user-attachments/assets/6b1d21f3-d2c7-424e-937b-a5ee07a4dd29" />
+
 *Monthly expense breakdown with intuitive display of spending details*
 
 ### Expense Reports - In-depth Data Analysis
-<img width="3070" height="1690" alt="image" src="https://github.com/user-attachments/assets/a61e5637-db34-47bd-83a8-4097e8fa805c" />
+
+<img width="3070" height="1690" alt="Expense Reports" src="https://github.com/user-attachments/assets/a61e5637-db34-47bd-83a8-4097e8fa805c" />
+
 *Powerful expense analysis with trend charts, category statistics, and multi-dimensional data display*
 
 ## Features
