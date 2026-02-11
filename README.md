@@ -68,7 +68,6 @@ A modern subscription management system rebuilt for **Cloudflare Workers**, base
 - Telegram Bot API
 - Cron triggers for scheduled tasks
 
-
 ## GitHub Actions Deploy (Fork)
 
 1. Fork this repository.
@@ -86,8 +85,8 @@ The workflow auto-applies D1 migrations and deploys the Worker.
 
 ## Acknowledgments
 
-This project is based on [Subscription-Management](https://github.com/huhusmang/Subscription-Management) by [@huhusmang](https://github.com/huhusmang). Thanks for the original work.
+This project is based on [Subscription-Management](https://github.com/huhusmang/Subscription-Management) by [@huhusmang](https://github.com/huhusmang). The original project provided a complete subscription management solution with Docker deployment and local SQLite storage. Billflow rebuilds the architecture on **Cloudflare Workers + D1**, replaces the exchange rate provider with **ExchangeRate-API**, and removes email notifications in favor of **Telegram-only** notifications. Thanks to the original author for the foundational work.
 
 ## License
 
-MIT
+[MIT](LICENSE)
